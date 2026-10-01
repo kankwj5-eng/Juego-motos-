@@ -128,7 +128,7 @@ const ASSET = {
 };
 const REQUIRED = ['road','pavement','drain','cobble','dirt','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','shopOpen','shopClosed','wall','stall','utility','cable','wallCable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
 const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet'];
-const SELFTEST = new URLSearchParams(location.search).has('selftest');
+const QS = new URLSearchParams(location.search);const SELFTEST=QS.has('selftest'),PREVIEW=QS.has('preview');
 const errors = [];
 window.addEventListener('error',e=>errors.push(String(e.message||e.error)));
 window.addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));
@@ -299,7 +299,7 @@ function physics(dt){
   bike.slip=damp(bike.slip,clamp(excess*.48+loose,0,.88),4.8,dt);
   const yawRate=bike.speed*curvature*(1-.25*bike.slip);bike.yaw+=yawRate*dt;
   const leanTarget=-clamp(Math.atan(lateralAccel/CONFIG.gravity),-CONFIG.leanMax,CONFIG.leanMax)*(1-.42*bike.slip);bike.lean=damp(bike.lean,leanTarget,CONFIG.leanResponse*surf.grip,dt);
-  if(input.wheelie&&bike.speed>6.2&&throttle>.22&&bike.onGround){bike.pitch+=CONFIG.wheelieRate*dt*(.6+speedN);bike.wheelieTime+=dt}else bike.pitch=damp(bike.pitch,0,CONFIG.wheelieRecovery,dt);
+  if(input.wheelie&&bike.speed>4.8&&throttle>.18&&bike.onGround){bike.pitch+=CONFIG.wheelieRate*dt*(.6+speedN);bike.wheelieTime+=dt}else bike.pitch=damp(bike.pitch,0,CONFIG.wheelieRecovery,dt);
   bike.pitch=clamp(bike.pitch,-.18,CONFIG.wheelieMax+.17);
   const fx=Math.sin(bike.yaw),fz=Math.cos(bike.yaw),sideX=Math.cos(bike.yaw),sideZ=-Math.sin(bike.yaw);const sideSlip=Math.sign(curvature||steerIn||1)*bike.slip*speedAbs*.16;
   const dx=(fx*bike.speed+sideX*sideSlip)*dt,dz=(fz*bike.speed+sideZ*sideSlip)*dt;bike.pos.x+=dx;bike.pos.z+=dz;bike.distance+=Math.hypot(dx,dz);
@@ -407,7 +407,7 @@ async function boot(){
   if(failures.some(n=>REQUIRED.includes(n))){$('#loadtext').textContent='Faltan recursos esenciales: '+failures.filter(n=>REQUIRED.includes(n)).join(', ');return}
   ground();roadGrid();buildings();setupBike();setupNPCs();if(cache.has('volcano'))scenery();
   bike.root.setPosition(bike.pos);camera.setPosition(0,3.0,-19);camera.lookAt(0,1,-7);startMission();$('#loadfill').style.width='100%';$('#loadtext').textContent='Barrio listo';$('#startBtn').disabled=false;
-  if(SELFTEST){startGame(true);runSelfTest()}
+  if(SELFTEST){startGame(true);runSelfTest()}else if(PREVIEW){startGame(true);paused=true;updateDay(0);updateCamera(.5);updateHUD()}
 }
 function startGame(test=false){if(started)return;started=true;$('#start').style.display='none';$('#hud').style.display='block';if(!test){audio.init();audio.resume()}applyBikeTransform();updateHUD();toast('WASD / joystick para salir')}
 $('#startBtn').addEventListener('click',()=>startGame(false));$('#resumeBtn').addEventListener('click',()=>togglePause(false));
