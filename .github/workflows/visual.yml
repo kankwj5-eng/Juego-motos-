@@ -13,6 +13,16 @@ jobs:
         run: |
           python3 -m http.server 8000 >/tmp/server.log 2>&1 &
           sleep 2
+      - name: Syntax check
+        run: |
+          python3 - <<'PY'
+          import re
+          s=open('index.html',encoding='utf-8').read()
+          blocks=re.findall(r'<script>(.*?)</script>',s,re.S)
+          assert blocks, 'inline script not found'
+          open('/tmp/game.js','w',encoding='utf-8').write(blocks[-1])
+          PY
+          node --check /tmp/game.js
       - name: Functional test and captures
         run: |
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
@@ -21,6 +31,8 @@ jobs:
           grep -q 'SELFTEST:PASS' /tmp/dom.txt
           "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --window-size=1440,900 --virtual-time-budget=26000 --screenshot=visual.png 'http://127.0.0.1:8000/?preview=1' >/tmp/preview.out 2>>/tmp/chrome.err || true
           test -s visual.png
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --window-size=390,844 --virtual-time-budget=26000 --screenshot=mobile.png 'http://127.0.0.1:8000/?preview=1' >/tmp/mobile.out 2>>/tmp/chrome.err || true
+          test -s mobile.png
           grep -Ei 'Uncaught|TypeError|ReferenceError|SyntaxError|ERR_FAILED|404|CORS' /tmp/chrome.err | tail -n 100 || true
       - uses: actions/upload-artifact@v4
         if: always()
@@ -28,5 +40,6 @@ jobs:
           name: visual-qa
           path: |
             visual.png
+            mobile.png
             /tmp/dom.txt
             /tmp/chrome.err
