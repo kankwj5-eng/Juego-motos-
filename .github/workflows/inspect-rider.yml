@@ -1,0 +1,34 @@
+name: Inspect Rider Rig
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/inspect-rider.yml]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download rigged CC0 rider candidate
+        run: curl -L --fail --retry 3 -o /tmp/rider.glb https://cdn.3dassets.dev/assets/32901/v1/model.glb
+      - name: Print GLB skeleton
+        run: |
+          python3 - <<'PY'
+          import struct,json
+          p='/tmp/rider.glb'
+          b=open(p,'rb').read()
+          magic,ver,total=struct.unpack_from('<III',b,0)
+          off=12; js=None
+          while off<total:
+              ln,typ=struct.unpack_from('<II',b,off); off+=8
+              chunk=b[off:off+ln]; off+=ln
+              if typ==0x4E4F534A:
+                  js=json.loads(chunk.decode('utf-8').rstrip('\x00 \t\r\n'));break
+          print('GLB',magic,ver,total)
+          print('SCENES',js.get('scenes'))
+          print('SKINS',len(js.get('skins',[])),'ANIMS',[a.get('name') for a in js.get('animations',[])])
+          joints=set()
+          for s in js.get('skins',[]): joints.update(s.get('joints',[]))
+          for i,n in enumerate(js.get('nodes',[])):
+              if i in joints or any(k in (n.get('name') or '').lower() for k in ['hip','pelv','spine','thigh','leg','knee','foot','arm','should','hand','head','neck']):
+                  print(i, n.get('name'), 'joint' if i in joints else '', 'children', n.get('children'), 'mesh', n.get('mesh'), 'skin', n.get('skin'))
+          PY
