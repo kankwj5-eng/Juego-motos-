@@ -197,7 +197,7 @@ const canvas=$('#game');
 const app=new pc.Application(canvas,{keyboard:new pc.Keyboard(window),mouse:new pc.Mouse(canvas),touch:('ontouchstart'in window)?new pc.TouchDevice(canvas):undefined,graphicsDeviceOptions:{antialias:true,alpha:false,preserveDrawingBuffer:false}});
 app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);app.setCanvasResolution(pc.RESOLUTION_AUTO);app.graphicsDevice.maxPixelRatio=Math.min(devicePixelRatio||1,1.55);app.start();
 addEventListener('resize',()=>app.resizeCanvas());
-app.scene.ambientLight=new pc.Color(.20,.22,.26);app.scene.exposure=1.10;
+app.scene.ambientLight=new pc.Color(.20,.22,.26);app.scene.exposure=1.02;
 try{app.scene.toneMapping=pc.TONEMAP_ACES;}catch{}
 try{app.scene.fog=pc.FOG_LINEAR;app.scene.fogStart=68;app.scene.fogEnd=138;app.scene.fogColor=new pc.Color(.55,.56,.58);}catch{}
 const camera=new pc.Entity('Camera');camera.addComponent('camera',{clearColor:new pc.Color(.38,.54,.72),farClip:170,nearClip:.08,fov:58});app.root.addChild(camera);
@@ -218,7 +218,7 @@ function loadEnvironment(){
           const cube=new pc.Texture(app.graphicsDevice,{name:'CieloTropical',cubemap:true,width:256,height:256,format:pc.PIXELFORMAT_RGBA16F,mipmaps:true,projection:pc.TEXTUREPROJECTION_CUBE});
           const ok=pc.reprojectTexture(src,cube,{numSamples:32,seamPixels:1});
           if(!ok)throw new Error('No se pudo reproyectar HDRI');
-          environmentCube=cube;environmentReady=true;app.scene.skybox=cube;app.scene.skyboxIntensity=.62;
+          environmentCube=cube;environmentReady=true;app.scene.skybox=cube;app.scene.skyboxIntensity=.32;
           try{app.scene.sky.type=pc.SKYTYPE_DOME;app.scene.sky.node.setLocalScale(140,140,140);app.scene.sky.center=new pc.Vec3(0,.07,0)}catch{}
           try{app.scene.skyboxRotation=new pc.Quat().setFromEulerAngles(0,118,0)}catch{}
           resolve(true);
@@ -263,7 +263,7 @@ function asphaltize(e){
     const old=mi.material;if(!old||!old.clone)continue;const m=old.clone();
     if(m.diffuse)m.diffuse=new pc.Color(.21,.205,.195);
     if(m.emissive)m.emissive=new pc.Color(0,0,0);
-    m.gloss=.05;m.metalness=0;m.useMetalness=false;
+    m.glossInvert=false;m.gloss=.018;m.metalness=0;m.useMetalness=false;m.useSkybox=false;m.specular=new pc.Color(.02,.02,.02);
     if('bumpiness' in m)m.bumpiness=.32;
     m.update();mi.material=m;
   }
@@ -525,7 +525,7 @@ function renderMission(){const m=currentMission();$('#missionTitle').textContent
 let cameraShake=0,paused=false,started=false,dayT=.22,toastTimer=0;
 function cycleCamera(){bike.cameraMode=(bike.cameraMode+1)%CONFIG.camera.length;toast('Cámara '+(bike.cameraMode+1))}
 function updateCamera(dt){const c=CONFIG.camera[bike.cameraMode],speedN=clamp(Math.abs(bike.speed)/CONFIG.maxSpeed,0,1),fx=Math.sin(bike.yaw),fz=Math.cos(bike.yaw);cameraShake=damp(cameraShake,0,5.8,dt);const shake=(Math.random()-.5)*cameraShake+(Math.random()-.5)*CONFIG.surfaces[bike.surface].bump*speedN;const tx=bike.pos.x-fx*c.dist,tz=bike.pos.z-fz*c.dist;camera.setPosition(damp(camera.getPosition().x,tx,5.8,dt)+shake,damp(camera.getPosition().y,bike.y+c.height,6.5,dt)+shake*.45,damp(camera.getPosition().z,tz,5.8,dt)+shake);camera.lookAt(bike.pos.x+fx*c.look,bike.y+.75,bike.pos.z+fz*c.look);camera.camera.fov=damp(camera.camera.fov,c.fov+speedN*7,4,dt)}
-function updateDay(dt){dayT=(dayT+dt/CONFIG.dayLength)%1;const a=dayT*Math.PI*2;const daylight=clamp(Math.sin(a)*.72+.45,.03,1),night=1-daylight;const sunset=clamp(1-Math.abs(dayT-.49)*15,0,1)+clamp(1-Math.abs(dayT-.01)*15,0,1);sun.light.intensity=.08+1.36*daylight;moon.light.intensity=night*.24;skyFill.light.intensity=.08+.28*daylight+.10*night;if(environmentReady)app.scene.skyboxIntensity=.22+.48*daylight+.18*sunset;app.scene.ambientLight.set(.06+.20*daylight,.075+.22*daylight,.105+.27*daylight);const day=[.31,.55,.82],dusk=[.84,.43,.25],nite=[.025,.045,.085];let r=nite[0]+(day[0]-nite[0])*daylight,g=nite[1]+(day[1]-nite[1])*daylight,b=nite[2]+(day[2]-nite[2])*daylight;r+=(dusk[0]-r)*sunset*.54;g+=(dusk[1]-g)*sunset*.54;b+=(dusk[2]-b)*sunset*.54;camera.camera.clearColor.set(r,g,b);try{app.scene.fogColor.set(r*.93,g*.94,b*.96)}catch{}for(const l of lamps)l.light.intensity=night>.42?1.25*night:0;headLamp.light.intensity=bike.headlight?(night>.2?1.85:0):0;audio.crickets(night)}
+function updateDay(dt){dayT=(dayT+dt/CONFIG.dayLength)%1;const a=dayT*Math.PI*2;const daylight=clamp(Math.sin(a)*.72+.45,.03,1),night=1-daylight;const sunset=clamp(1-Math.abs(dayT-.49)*15,0,1)+clamp(1-Math.abs(dayT-.01)*15,0,1);sun.light.intensity=.08+1.36*daylight;moon.light.intensity=night*.24;skyFill.light.intensity=.08+.28*daylight+.10*night;if(environmentReady)app.scene.skyboxIntensity=.18+.22*daylight+.05*sunset;app.scene.ambientLight.set(.06+.20*daylight,.075+.22*daylight,.105+.27*daylight);const day=[.31,.55,.82],dusk=[.84,.43,.25],nite=[.025,.045,.085];let r=nite[0]+(day[0]-nite[0])*daylight,g=nite[1]+(day[1]-nite[1])*daylight,b=nite[2]+(day[2]-nite[2])*daylight;r+=(dusk[0]-r)*sunset*.54;g+=(dusk[1]-g)*sunset*.54;b+=(dusk[2]-b)*sunset*.54;camera.camera.clearColor.set(r,g,b);try{app.scene.fogColor.set(r*.93,g*.94,b*.96)}catch{}for(const l of lamps)l.light.intensity=night>.42?1.25*night:0;headLamp.light.intensity=bike.headlight?(night>.2?1.85:0):0;audio.crickets(night)}
 function updateHUD(){const kmh=Math.abs(bike.speed)*3.6;$('#speed').innerHTML=`${Math.round(kmh)} <small>KM/H</small>`;$('#rpm').textContent=Math.round(bike.rpm/100)*100;$('#grip').textContent=Math.round(CONFIG.surfaces[bike.surface].grip*100)+'%';$('#surface').textContent=CONFIG.surfaces[bike.surface].label;drawMap();updateLabels()}
 function drawMap(){const c=$('#map'),ctx=c.getContext('2d'),W=c.width,H=c.height,s=W/(CONFIG.worldHalf*2);ctx.clearRect(0,0,W,H);ctx.fillStyle='#171816';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#555a5a';ctx.lineWidth=8*s;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();ctx.strokeStyle='#7f766a';ctx.lineWidth=4*s;for(const z of [-18,20]){ctx.beginPath();ctx.moveTo(0,H/2-z*s);ctx.lineTo(W,H/2-z*s);ctx.stroke()}ctx.strokeStyle='#8a6f4e';ctx.lineWidth=3*s;ctx.beginPath();ctx.moveTo(W/2+16*s,0);ctx.lineTo(W/2+16*s,H);ctx.stroke();const m=currentMission();if(m.kind!=='stunt'&&m.steps[mission.step]){const [x,z]=m.steps[mission.step];ctx.fillStyle='#ffb04a';ctx.beginPath();ctx.arc(W/2+x*s,H/2-z*s,7,0,Math.PI*2);ctx.fill()}for(const mo of movers){const p=mo.e.getPosition();ctx.fillStyle=mo.e.name==='bus'?'#71a8ff':mo.e.name==='rickshaw'?'#60d2b0':'#c9c9c9';ctx.fillRect(W/2+p.x*s-2,H/2-p.z*s-2,4,4)}ctx.save();ctx.translate(W/2+bike.pos.x*s,H/2-bike.pos.z*s);ctx.rotate(bike.yaw);ctx.fillStyle='#ff7f26';ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(5,6);ctx.lineTo(-5,6);ctx.closePath();ctx.fill();ctx.restore()}
 function updateLabels(){const w=innerWidth,h=innerHeight;for(const l of labels){const d=Math.hypot(l.pos.x-bike.pos.x,l.pos.z-bike.pos.z),p=l.pos.clone();camera.camera.worldToScreen(p,p);const vis=d<16&&p.z>0&&p.x>=0&&p.x<=w&&p.y>=0&&p.y<=h;l.el.style.display=vis?'block':'none';if(vis){l.el.style.left=p.x+'px';l.el.style.top=p.y+'px'}}}
