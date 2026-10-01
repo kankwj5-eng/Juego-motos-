@@ -88,7 +88,7 @@ const ASSET = {
   cobble:'https://cdn.3dassets.dev/assets/36676/v1/model.glb',
   dirt:'https://cdn.3dassets.dev/assets/27440/v1/model.glb',
   yardGrit:'https://cdn.3dassets.dev/assets/38712/v1/model.glb',
-  road:'https://cdn.3dassets.dev/assets/220/v1/model.glb',
+  road:'https://cdn.3dassets.dev/assets/36523/v1/model.glb',
   pavement:'https://cdn.3dassets.dev/assets/36522/v1/model.glb',
   drain:'https://cdn.3dassets.dev/assets/36521/v1/model.glb',
   streetSection:'https://cdn.3dassets.dev/assets/30065/v1/model.glb',
@@ -143,11 +143,12 @@ const ASSET = {
   stoolBlue:'https://cdn.3dassets.dev/assets/36580/v1/model.glb',
   stoolStack:'https://cdn.3dassets.dev/assets/36566/v1/model.glb',
   pottedPlants:'https://cdn.3dassets.dev/assets/36579/v1/model.glb',
-  awningCrimson:'https://cdn.3dassets.dev/assets/36581/v1/model.glb'
+  awningCrimson:'https://cdn.3dassets.dev/assets/36581/v1/model.glb',
+  shadeTree:'https://cdn.3dassets.dev/assets/38655/v1/model.glb'
 };
 const REQUIRED = ['road','pavement','drain','cobble','dirt','yardGrit','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','facadeConcrete','facadeDoor','facadeShutter','facadeWindow','facadeShop','workshopShed','compactHouse','shopOpen','stall','utility','cable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
-const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet','graffiti','cornerBuilding','waterTank','publicTap','streetBin','stoolBlue','stoolStack','pottedPlants','awningCrimson'];
-const SKY_URL='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/industrial_sunset_puresky_1k.hdr';
+const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet','graffiti','cornerBuilding','waterTank','publicTap','streetBin','stoolBlue','stoolStack','pottedPlants','awningCrimson','shadeTree'];
+const SKY_URL='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/qwantani_sunset_puresky_1k.hdr';
 const QS = new URLSearchParams(location.search);const SELFTEST=QS.has('selftest'),PREVIEW=QS.has('preview');
 const errors = [];
 window.addEventListener('error',e=>errors.push(String(e.message||e.error)));
@@ -261,31 +262,33 @@ function asphaltize(e){
   walk(e,n=>{const nm=(n.name||'').toLowerCase();if(nm.includes('plaster')||nm.includes('stone'))n.enabled=false});
   for(const r of e.findComponents('render'))for(const mi of r.meshInstances){
     const old=mi.material;if(!old||!old.clone)continue;const m=old.clone();
-    m.diffuseMap=null;m.opacityMap=null;m.emissiveMap=null;m.metalnessMap=null;m.glossMap=null;
-    if(m.diffuse)m.diffuse=new pc.Color(.34,.325,.30);
-    if(m.emissive)m.emissive=new pc.Color(.008,.007,.006);
-    m.glossInvert=false;m.gloss=.035;m.metalness=0;m.useMetalness=false;m.useSkybox=false;m.specular=new pc.Color(.035,.032,.03);
-    if('bumpiness' in m)m.bumpiness=.16;
+    if(m.diffuse)m.diffuse=new pc.Color(.62,.60,.56);
+    if(m.emissive)m.emissive=new pc.Color(0,0,0);
+    m.glossInvert=false;m.gloss=.025;m.metalness=0;m.useMetalness=false;m.useSkybox=false;m.specular=new pc.Color(.025,.025,.022);
+    if('bumpiness' in m)m.bumpiness=.22;
     m.update();mi.material=m;
   }
   return e;
 }
 function roadGrid(){
-  // Avenida barrial: asfalto parchado de 5.4 m y aceras de 2.4 m, sin las líneas blancas del módulo japonés anterior.
   let i=0;
   for(let z=-44;z<=44;z+=4,i++){
-    putScaled('road',0,z,0,1.35,1,1,-.13);
+    if(z<=-28)asphaltize(putScaled('road',0,z,0,1.35,1,1,-.13));
+    else putScaled('cobble',0,z,0,1.35,1,1,-.13);
     const l=(i%5===1?'drain':'pavement'),r=(i%5===3?'drain':'pavement');
     put(l,-3.90,z,90,1,-.12);put(r,3.90,z,-90,1,-.12);
   }
-  // Cruces de adoquín y un ramal de tierra: la mezcla de superficies es intencional.
+  // Calles laterales adoquinadas y un ramal residencial de tierra.
   for(let x=-44;x<=44;x+=4){for(const z of [-18,20])put('cobble',x,z,0,1,.012)}
   for(let z=-42;z<=42;z+=3)put('dirt',16,z,(Math.round(z)%2)*4,1,-.01);
-  surfaceZones.push({type:'asphalt',x:0,z:0,hx:2.72,hz:46});
+
+  surfaceZones.push({type:'asphalt',x:0,z:-36,hx:2.72,hz:9.0});
+  surfaceZones.push({type:'cobble',x:0,z:10,hx:2.72,hz:36});
   surfaceZones.push({type:'cobble',x:0,z:-18,hx:46,hz:2.25},{type:'cobble',x:0,z:20,hx:46,hz:2.25});
   surfaceZones.push({type:'dirt',x:16,z:0,hx:2.35,hz:45});
   surfaceZones.push({type:'sand',x:-28,z:31,hx:6.5,hz:5.5});
   surfaceZones.push({type:'puddle',x:-1.55,z:13,hx:1.1,hz:1.35},{type:'puddle',x:1.55,z:-31,hx:.9,hz:1.15},{type:'puddle',x:16,z:7,hx:1.5,hz:2.4});
+
   put('puddle',-1.55,13,0,.78,.006);put('puddle',1.55,-31,185,.64,.006);put('puddle',16,7,90,1.12,.012);
   put('speedBump',0,-7,0,1.05,.01);put('speedBump',0,29,0,1.05,.01);
   [[1.35,5,.45],[-1.15,-26,.36],[1.55,35,.31]].forEach((q,j)=>put('pothole',q[0],q[1],j*37,q[2],-.02));
@@ -368,6 +371,9 @@ function buildings(){
   if(cache.has('church')){put('church',-35,39,200,1.1,0);addCollider(-35,39,2.2,2.2,'building')}
   [[-36,-8],[35,10],[-34,12],[29,32],[34,-31],[-34,-31],[27,13]].forEach((q,i)=>put('banana',q[0],q[1],i*47,.9+(i%3)*.08,0));
   if(cache.has('palm'))[[-30,10],[30,29],[-28,37]].forEach((q,i)=>put('palm',q[0],q[1],i*61,.86,0));
+  if(cache.has('shadeTree')){
+    [[-7.7,-27,18,1.04],[7.8,25,-32,1.08],[-8.0,36,44,.96],[8.1,-11,-12,.92]].forEach(q=>{put('shadeTree',q[0],q[1],q[2],q[3],0);addCollider(q[0],q[1],.28,.28,'tree')});
+  }
   if(cache.has('clothesline')){put('clothesline',-11,-30,0,.82,0);put('clothesline',11,31,180,.82,0)}
   if(cache.has('handcart')){put('handcart',-5.6,12,35,.80,0);put('handcart',6.1,-15,195,.76,0)}
 
@@ -403,7 +409,7 @@ function styleRider(e){
 function setupBike(){
   bike.visual=instance('bike',bike.root,{p:[0,-.18,0],r:[0,0,0],s:[.97,.97,.97]});
   bike.rider=instance('rider',bike.root,{p:[0,.00,-.18],r:[0,0,0],s:[.60,.78,.78],name:'Piloto'});styleRider(bike.rider);
-  if(cache.has('helmet'))bike.helmet=instance('helmet',bike.root,{p:[0,.88,-.09],r:[0,180,0],s:[.82,.82,.82],name:'CascoPiloto'});
+  if(cache.has('helmet'))bike.helmet=instance('helmet',bike.root,{p:[0,1.03,-.12],r:[-5,180,0],s:[.68,.68,.68],name:'CascoPiloto'});
   bike.wheels.length=0;bike.frontNodes.length=0;
   walk(bike.visual,n=>{const nm=(n.name||'').toLowerCase();if(/side.?stand|kick.?stand/.test(nm))n.enabled=false;if(nm.includes('wheel')){const b=n.getLocalEulerAngles().clone();bike.wheels.push({n,b})}if(nm.includes('front')||nm.includes('handle')||nm.includes('steer')){const b=n.getLocalEulerAngles().clone();bike.frontNodes.push({n,b})}});
   headLamp.setLocalPosition(0,.88,.77);setBikeColor(0)
@@ -561,7 +567,7 @@ async function runSelfTest(){
     const s1=bike.speed;input.up=0;input.brake=1;for(let i=0;i<45;i++)physics(1/60);input.brake=0;ok('frenado',Math.abs(bike.speed)<Math.abs(s1));
     input.up=1;input.right=1;for(let i=0;i<70;i++)physics(1/60);input.right=0;ok('inclinación',Math.abs(bike.lean)>.05);bike.speed=Math.max(bike.speed,7.2);bike.pitch=0;bike.wheelieTime=0;input.up=1;input.wheelie=1;for(let i=0;i<36;i++)physics(1/60);input.wheelie=0;ok('wheelie',bike.pitch>.10&&bike.wheelieTime>.10);input.up=0;
     // Superficies: la tierra debe producir más slip que el asfalto bajo la misma maniobra.
-    input.up=1;input.right=1;bike.pos.set(0,.18,-2);bike.yaw=0;bike.speed=9;bike.steer=0;bike.slip=0;for(let i=0;i<20;i++)physics(1/60);const slipAsphalt=bike.slip;
+    input.up=1;input.right=1;bike.pos.set(0,.18,-36);bike.yaw=0;bike.speed=9;bike.steer=0;bike.slip=0;for(let i=0;i<20;i++)physics(1/60);const slipAsphalt=bike.slip;
     bike.pos.set(16,.18,-2);bike.yaw=0;bike.speed=9;bike.steer=0;bike.slip=0;for(let i=0;i<20;i++)physics(1/60);const slipDirt=bike.slip;ok('agarre superficies',slipDirt>slipAsphalt);
     // Tope y rampa deben activar suspensión/salto.
     input.right=0;bike.pos.set(0,.18,-8.1);bike.yaw=0;bike.speed=7;bike.susp=0;for(let i=0;i<20;i++)physics(1/60);ok('suspensión tope',Math.abs(bike.susp)>.004||cameraShake>0);
