@@ -384,7 +384,7 @@ function surfaceAt(x,z){for(let i=surfaceZones.length-1;i>=0;i--){const q=surfac
    ========================================================= */
 const bike={root:new pc.Entity('MotoPlayer'),visual:null,rider:null,wheels:[],frontNodes:[],pos:new pc.Vec3(0,.18,-12),yaw:0,speed:0,steer:0,lean:0,pitch:0,vy:0,y:.18,onGround:true,fallen:false,fallTimer:0,rpm:1200,susp:0,wheelAngle:0,slip:0,surface:'asphalt',cameraMode:0,headlight:true,color:0,exhaust:0,airtime:0,wheelieTime:0,lastSafe:new pc.Vec3(0,.18,-12),distance:0};actors.addChild(bike.root);
 const headLamp=new pc.Entity('FaroMoto');headLamp.addComponent('light',{type:'spot',color:new pc.Color(1,.91,.73),intensity:1.9,range:24,innerConeAngle:19,outerConeAngle:33,castShadows:false});headLamp.setLocalPosition(0,1.0,.45);headLamp.setLocalEulerAngles(-82,0,0);bike.root.addChild(headLamp);
-const bikeFill=new pc.Entity('BikeFill');bikeFill.addComponent('light',{type:'omni',color:new pc.Color(.78,.86,1),intensity:.22,range:4.8,castShadows:false});bikeFill.setLocalPosition(0,1.25,-.35);bike.root.addChild(bikeFill);
+
 function riderBone(name){return bike.rider?.findByName?.('scout:'+name)||null}
 function poseBone(name,x=0,y=0,z=0){const b=riderBone(name);if(b)b.setLocalEulerAngles(x,y,z);return b}
 function styleRider(e){
@@ -472,8 +472,8 @@ function mover(name,path,speed,scale=1,y=0,yawOffset=0){const e=instance(name,ac
 function setupNPCs(){
   // Tránsito ligero en carriles estrechos: aparece desde la primera cuadra y no nace fuera de cámara.
   mover('bus',[[1.05,16],[1.05,40],[-1.05,40],[-1.05,-39],[1.05,-39],[1.05,16]],3.65,.70,0,0);
-  mover('rickshaw',[[-1.15,-3],[-1.15,35],[1.15,35],[1.15,-34],[-1.15,-34],[-1.15,-3]],3.15,.82,.02,0);
-  mover('trafficBike',[[1.18,5],[1.18,35],[-1.18,35],[-1.18,-36],[1.18,-36],[1.18,5]],5.0,.66,.04,0);
+  mover('rickshaw',[[1.15,24],[1.15,35],[-1.15,35],[-1.15,-34],[1.15,-34],[1.15,24]],3.15,.82,.02,0);
+  mover('trafficBike',[[-1.18,-27],[-1.18,-36],[1.18,-36],[1.18,35],[-1.18,35],[-1.18,-27]],5.0,.66,.04,0);
   mover('bicycle',[[-3.48,-24],[-3.48,31],[3.48,31],[3.48,-23],[-3.48,-24]],1.85,.82,.02,0);
   // Animales cruzan desde las orillas y obligan a aflojar, sin quedarse dentro de fachadas.
   mover('dog',[[-3.35,-1],[3.2,-1],[3.2,5],[-3.35,5],[-3.35,-1]],1.05,.70,0,0);
