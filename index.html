@@ -266,7 +266,11 @@ function buildings(){
   addLabel('PULPERÍA LA ESQUINA',-5.0,2.55,-6);addLabel('TALLER DE MOTOS',5.0,2.55,6);addLabel('FRITANGA',-4.65,2.2,10);addLabel('FRESCOS',4.65,2.2,16);
   put('commuterBike',4.65,4.0,210,.84,.03);put('commuterBike',4.72,7.25,165,.84,.03);
   if(cache.has('toolTrolley'))put('toolTrolley',4.85,5.0,-90,.78,.02);if(cache.has('fuelCan'))put('fuelCan',4.8,6.15,0,.82,.02);if(cache.has('helmet'))put('helmet',4.9,6.85,0,.78,.55);
-  put('rickshaw',3.75,-26,180,.84,.02);put('bicycle',-4.35,-11,18,.90,.02);addLabel('PARADA',4.1,2.2,-25.5);
+  // La primera cuadra concentra la vida: parada, motos aparcadas y clientes pegados a las aceras, no en medio de la vía.
+  put('rickshaw',3.62,-20,178,.84,.02);put('bicycle',-3.62,-11,18,.90,.02);addLabel('PARADA',3.75,2.2,-19.5);
+  put('bike',-3.72,-4.1,155,.76,.03);put('bike',-3.70,-7.5,205,.73,.03);
+  put('commuterBike',3.70,9.4,188,.80,.03);
+  [[-3.48,-5.1,90,.86],[-3.48,-1.2,105,.82],[-3.46,9.0,76,.78],[3.46,5.0,-88,.86],[3.48,15.3,-100,.82],[3.45,-18.0,-92,.80]].forEach(q=>{const e=instance('person',actors,{p:[q[0],0,q[1]],r:[0,q[2],0],s:[q[3],q[3],q[3]],name:'Vecino'});if(e)e.tags.add('streetLife')});
   put('hoop',-30,25,0,1,0);put('hoop',-24,34,180,1,0);addLabel('CANCHA',-27,4.0,29.5);
   if(cache.has('church')){put('church',-35,39,200,1.1,0);addCollider(-35,39,2.2,2.2,'building')}
   [[-36,-8],[35,10],[-34,12],[29,32],[34,-31],[-34,-31],[27,13]].forEach((q,i)=>put('banana',q[0],q[1],i*47,.9+(i%3)*.08,0));
@@ -340,16 +344,21 @@ function animateWheels(){for(const w of bike.wheels)w.n.setLocalEulerAngles(w.b.
 const movers=[];
 function mover(name,path,speed,scale=1,y=0,yawOffset=0){const e=instance(name,actors,{p:[path[0][0],y,path[0][1]],s:[scale,scale,scale]});if(!e)return null;const m={e,path,speed,i:1,t:0,y,yawOffset,horned:0};movers.push(m);return m}
 function setupNPCs(){
-  mover('bus',[[0,-43],[0,43],[2,43],[2,-43],[0,-43]],4.0,.72,0,0);
-  mover('rickshaw',[[-2,-40],[-2,38],[-1,38],[-1,-40]],3.7,.86,.02,0);
-  mover('trafficBike',[[2,-38],[2,36],[-2,36],[-2,-38]],5.5,.70,.04,0);
-  mover('bicycle',[[-5.1,-34],[-5.1,34],[5.1,34],[5.1,-34],[-5.1,-34]],2.15,.86,.02,0);
-  mover('dog',[[-6,8],[5,8],[5,13],[-6,13]],1.15,.72,0,0);
-  mover('chicken',[[-6,-14],[-3,-11],[-6,-8],[-8,-11],[-6,-14]],.68,.95,0,0);
-  mover('chicken',[[10,22],[15,22],[15,27],[10,27],[10,22]],.58,.9,0,0);
-  mover('person',[[-5.0,-2],[-5.0,16],[-5.0,28],[-5.0,-2]],1.0,.90,0,0);
-  mover('person',[[5.0,-30],[5.0,-12],[5.0,5],[5.0,-30]],.88,.84,0,0);
-  mover('person',[[-31,22],[-24,22],[-24,34],[-31,34]],.74,.72,0,0);
+  // Tránsito ligero en carriles estrechos: aparece desde la primera cuadra y no nace fuera de cámara.
+  mover('bus',[[1.05,16],[1.05,40],[-1.05,40],[-1.05,-39],[1.05,-39],[1.05,16]],3.65,.70,0,0);
+  mover('rickshaw',[[-1.15,-3],[-1.15,35],[1.15,35],[1.15,-34],[-1.15,-34],[-1.15,-3]],3.15,.82,.02,0);
+  mover('trafficBike',[[1.18,5],[1.18,35],[-1.18,35],[-1.18,-36],[1.18,-36],[1.18,5]],5.0,.66,.04,0);
+  mover('bicycle',[[-3.48,-24],[-3.48,31],[3.48,31],[3.48,-23],[-3.48,-24]],1.85,.82,.02,0);
+  // Animales cruzan desde las orillas y obligan a aflojar, sin quedarse dentro de fachadas.
+  mover('dog',[[-3.35,-1],[3.2,-1],[3.2,5],[-3.35,5],[-3.35,-1]],1.05,.70,0,0);
+  mover('chicken',[[-3.45,-9],[-2.6,-7.4],[-3.3,-5.8],[-3.9,-7.2],[-3.45,-9]],.62,.90,0,0);
+  mover('chicken',[[3.35,12],[2.65,14],[3.3,16],[3.9,14],[3.35,12]],.56,.86,0,0);
+  // Peatones sobre aceras y una travesía corta frente a pulpería/taller.
+  mover('person',[[-3.48,-13],[-3.48,2],[-3.48,17],[-3.48,-13]],.86,.86,0,0);
+  mover('person',[[3.48,-16],[3.48,-2],[3.48,13],[3.48,-16]],.80,.82,0,0);
+  mover('person',[[-3.35,7],[3.25,7],[3.25,10],[-3.35,10],[-3.35,7]],.72,.76,0,0);
+  mover('person',[[-31,22],[-24,22],[-24,34],[-31,34]],.70,.62,0,0);
+  mover('person',[[-29,26],[-26,26],[-26,31],[-29,31]],.66,.56,0,0);
 }
 function updateMovers(dt){for(const m of movers){const target=m.path[m.i],p=m.e.getPosition();let dx=target[0]-p.x,dz=target[1]-p.z,d=Math.hypot(dx,dz);if(d<.35){m.i=(m.i+1)%m.path.length;continue}dx/=d;dz/=d;let sp=m.speed;if(m.horned>0){sp*=1.55;m.horned-=dt}m.e.setPosition(p.x+dx*sp*dt,m.y,p.z+dz*sp*dt);m.e.setEulerAngles(0,deg(Math.atan2(dx,dz))+m.yawOffset,0);if(Math.hypot(p.x-bike.pos.x,p.z-bike.pos.z)<1.1&&Math.abs(bike.speed)>4){bike.speed*=-.1;cameraShake=Math.max(cameraShake,.18);audio.impact(.65)}}}
 function reactHorn(){for(const m of movers){const p=m.e.getPosition();if(Math.hypot(p.x-bike.pos.x,p.z-bike.pos.z)<10)m.horned=1.6}}
