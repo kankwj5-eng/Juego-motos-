@@ -379,20 +379,20 @@ function styleRider(e){
   }
 }
 function poseRider(){
-  // Postura específica de calle: cadera sobre el asiento, rodillas flexionadas y manos al manubrio.
-  poseBone('spine05',7,0,0);poseBone('spine04',4,0,0);poseBone('spine03',3,0,0);
-  poseBone('upperleg01.L',-67,-2,-7);poseBone('upperleg02.L',0,0,0);
-  poseBone('lowerleg01.L',79,0,2);poseBone('lowerleg02.L',0,0,0);poseBone('foot.L',-12,0,0);
-  poseBone('upperleg01.R',-67,2,7);poseBone('upperleg02.R',0,0,0);
-  poseBone('lowerleg01.R',79,0,-2);poseBone('lowerleg02.R',0,0,0);poseBone('foot.R',-12,0,0);
-  poseBone('shoulder01.L',0,0,-8);poseBone('upperarm01.L',-58,-5,-22);poseBone('lowerarm01.L',66,0,2);
-  poseBone('shoulder01.R',0,0,8);poseBone('upperarm01.R',-58,5,22);poseBone('lowerarm01.R',66,0,-2);
-  poseBone('wrist.L',-8,4,0);poseBone('wrist.R',-8,-4,0);poseBone('head',-6,0,0);
+  // Postura compacta y estable: flexión moderada, simétrica y sin torsiones extremas.
+  poseBone('spine05',5,0,0);poseBone('spine04',3,0,0);poseBone('spine03',2,0,0);
+  poseBone('upperleg01.L',-43,0,-3);poseBone('upperleg02.L',0,0,0);
+  poseBone('lowerleg01.L',49,0,1);poseBone('lowerleg02.L',0,0,0);poseBone('foot.L',-7,0,0);
+  poseBone('upperleg01.R',-43,0,3);poseBone('upperleg02.R',0,0,0);
+  poseBone('lowerleg01.R',49,0,-1);poseBone('lowerleg02.R',0,0,0);poseBone('foot.R',-7,0,0);
+  poseBone('shoulder01.L',0,0,-2);poseBone('upperarm01.L',-34,0,-7);poseBone('lowerarm01.L',42,0,0);
+  poseBone('shoulder01.R',0,0,2);poseBone('upperarm01.R',-34,0,7);poseBone('lowerarm01.R',42,0,0);
+  poseBone('wrist.L',-4,2,0);poseBone('wrist.R',-4,-2,0);poseBone('head',-3,0,0);
 }
 function setupBike(){
   bike.visual=instance('bike',bike.root,{p:[0,-.18,0],r:[0,0,0],s:[.97,.97,.97]});
-  bike.rider=instance('rider',bike.root,{p:[0,-.08,-.16],r:[0,0,0],s:[.84,.84,.84],name:'Piloto'});styleRider(bike.rider);poseRider();
-  if(cache.has('helmet'))bike.helmet=instance('helmet',bike.root,{p:[0,1.43,-.08],r:[0,180,0],s:[.46,.46,.46],name:'CascoPiloto'});
+  bike.rider=instance('rider',bike.root,{p:[0,-.08,-.16],r:[0,0,0],s:[.76,.76,.76],name:'Piloto'});styleRider(bike.rider);poseRider();
+  if(cache.has('helmet'))bike.helmet=instance('helmet',bike.root,{p:[0,1.26,-.11],r:[0,180,0],s:[.43,.43,.43],name:'CascoPiloto'});
   bike.wheels.length=0;bike.frontNodes.length=0;
   walk(bike.visual,n=>{const nm=(n.name||'').toLowerCase();if(/side.?stand|kick.?stand/.test(nm))n.enabled=false;if(nm.includes('wheel')){const b=n.getLocalEulerAngles().clone();bike.wheels.push({n,b})}if(nm.includes('front')||nm.includes('handle')||nm.includes('steer')){const b=n.getLocalEulerAngles().clone();bike.frontNodes.push({n,b})}});
   headLamp.setLocalPosition(0,.88,.77);setBikeColor(0)
@@ -503,7 +503,7 @@ function renderMission(){const m=currentMission();$('#missionTitle').textContent
 let cameraShake=0,paused=false,started=false,dayT=.22,toastTimer=0;
 function cycleCamera(){bike.cameraMode=(bike.cameraMode+1)%CONFIG.camera.length;toast('Cámara '+(bike.cameraMode+1))}
 function updateCamera(dt){const c=CONFIG.camera[bike.cameraMode],speedN=clamp(Math.abs(bike.speed)/CONFIG.maxSpeed,0,1),fx=Math.sin(bike.yaw),fz=Math.cos(bike.yaw);cameraShake=damp(cameraShake,0,5.8,dt);const shake=(Math.random()-.5)*cameraShake+(Math.random()-.5)*CONFIG.surfaces[bike.surface].bump*speedN;const tx=bike.pos.x-fx*c.dist,tz=bike.pos.z-fz*c.dist;camera.setPosition(damp(camera.getPosition().x,tx,5.8,dt)+shake,damp(camera.getPosition().y,bike.y+c.height,6.5,dt)+shake*.45,damp(camera.getPosition().z,tz,5.8,dt)+shake);camera.lookAt(bike.pos.x+fx*c.look,bike.y+.75,bike.pos.z+fz*c.look);camera.camera.fov=damp(camera.camera.fov,c.fov+speedN*7,4,dt)}
-function updateDay(dt){dayT=(dayT+dt/CONFIG.dayLength)%1;const a=dayT*Math.PI*2;const daylight=clamp(Math.sin(a)*.72+.45,.03,1),night=1-daylight;const sunset=clamp(1-Math.abs(dayT-.49)*15,0,1)+clamp(1-Math.abs(dayT-.01)*15,0,1);sun.light.intensity=.08+1.36*daylight;moon.light.intensity=night*.24;skyFill.light.intensity=.08+.28*daylight+.10*night;app.scene.ambientLight.set(.06+.20*daylight,.075+.22*daylight,.105+.27*daylight);const day=[.31,.55,.82],dusk=[.84,.43,.25],nite=[.025,.045,.085];let r=nite[0]+(day[0]-nite[0])*daylight,g=nite[1]+(day[1]-nite[1])*daylight,b=nite[2]+(day[2]-nite[2])*daylight;r+=(dusk[0]-r)*sunset*.54;g+=(dusk[1]-g)*sunset*.54;b+=(dusk[2]-b)*sunset*.54;camera.camera.clearColor.set(r,g,b);try{app.scene.fogColor.set(r*.93,g*.94,b*.96)}catch{}for(const l of lamps)l.light.intensity=night>.42?1.25*night:0;headLamp.light.intensity=bike.headlight?(night>.2?1.85:.09):0;audio.crickets(night)}
+function updateDay(dt){dayT=(dayT+dt/CONFIG.dayLength)%1;const a=dayT*Math.PI*2;const daylight=clamp(Math.sin(a)*.72+.45,.03,1),night=1-daylight;const sunset=clamp(1-Math.abs(dayT-.49)*15,0,1)+clamp(1-Math.abs(dayT-.01)*15,0,1);sun.light.intensity=.08+1.36*daylight;moon.light.intensity=night*.24;skyFill.light.intensity=.08+.28*daylight+.10*night;app.scene.ambientLight.set(.06+.20*daylight,.075+.22*daylight,.105+.27*daylight);const day=[.31,.55,.82],dusk=[.84,.43,.25],nite=[.025,.045,.085];let r=nite[0]+(day[0]-nite[0])*daylight,g=nite[1]+(day[1]-nite[1])*daylight,b=nite[2]+(day[2]-nite[2])*daylight;r+=(dusk[0]-r)*sunset*.54;g+=(dusk[1]-g)*sunset*.54;b+=(dusk[2]-b)*sunset*.54;camera.camera.clearColor.set(r,g,b);try{app.scene.fogColor.set(r*.93,g*.94,b*.96)}catch{}for(const l of lamps)l.light.intensity=night>.42?1.25*night:0;headLamp.light.intensity=bike.headlight?(night>.2?1.85:0):0;audio.crickets(night)}
 function updateHUD(){const kmh=Math.abs(bike.speed)*3.6;$('#speed').innerHTML=`${Math.round(kmh)} <small>KM/H</small>`;$('#rpm').textContent=Math.round(bike.rpm/100)*100;$('#grip').textContent=Math.round(CONFIG.surfaces[bike.surface].grip*100)+'%';$('#surface').textContent=CONFIG.surfaces[bike.surface].label;drawMap();updateLabels()}
 function drawMap(){const c=$('#map'),ctx=c.getContext('2d'),W=c.width,H=c.height,s=W/(CONFIG.worldHalf*2);ctx.clearRect(0,0,W,H);ctx.fillStyle='#171816';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#555a5a';ctx.lineWidth=8*s;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();ctx.strokeStyle='#7f766a';ctx.lineWidth=4*s;for(const z of [-18,20]){ctx.beginPath();ctx.moveTo(0,H/2-z*s);ctx.lineTo(W,H/2-z*s);ctx.stroke()}ctx.strokeStyle='#8a6f4e';ctx.lineWidth=3*s;ctx.beginPath();ctx.moveTo(W/2+16*s,0);ctx.lineTo(W/2+16*s,H);ctx.stroke();const m=currentMission();if(m.kind!=='stunt'&&m.steps[mission.step]){const [x,z]=m.steps[mission.step];ctx.fillStyle='#ffb04a';ctx.beginPath();ctx.arc(W/2+x*s,H/2-z*s,7,0,Math.PI*2);ctx.fill()}for(const mo of movers){const p=mo.e.getPosition();ctx.fillStyle=mo.e.name==='bus'?'#71a8ff':mo.e.name==='rickshaw'?'#60d2b0':'#c9c9c9';ctx.fillRect(W/2+p.x*s-2,H/2-p.z*s-2,4,4)}ctx.save();ctx.translate(W/2+bike.pos.x*s,H/2-bike.pos.z*s);ctx.rotate(bike.yaw);ctx.fillStyle='#ff7f26';ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(5,6);ctx.lineTo(-5,6);ctx.closePath();ctx.fill();ctx.restore()}
 function updateLabels(){const w=innerWidth,h=innerHeight;for(const l of labels){const d=Math.hypot(l.pos.x-bike.pos.x,l.pos.z-bike.pos.z),p=l.pos.clone();camera.camera.worldToScreen(p,p);const vis=d<16&&p.z>0&&p.x>=0&&p.x<=w&&p.y>=0&&p.y<=h;l.el.style.display=vis?'block':'none';if(vis){l.el.style.left=p.x+'px';l.el.style.top=p.y+'px'}}}
