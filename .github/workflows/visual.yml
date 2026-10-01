@@ -1,0 +1,29 @@
+name: Visual QA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [index.html, .github/workflows/visual.yml]
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Serve
+        run: |
+          python3 -m http.server 8000 >/tmp/server.log 2>&1 &
+          sleep 2
+      - name: Capture and test
+        run: |
+          set -e
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --window-size=1440,900 --virtual-time-budget=22000 --screenshot=visual.png 'http://127.0.0.1:8000/?selftest=1' >/tmp/chrome.out 2>/tmp/chrome.err || true
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --virtual-time-budget=22000 --dump-dom 'http://127.0.0.1:8000/?selftest=1' >/tmp/dom.txt 2>>/tmp/chrome.err || true
+          grep -q 'SELFTEST:PASS' /tmp/dom.txt
+          test -s visual.png
+          tail -n 80 /tmp/chrome.err || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-qa
+          path: visual.png
