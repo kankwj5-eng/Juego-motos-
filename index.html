@@ -101,6 +101,8 @@ const ASSET = {
   facadeWindow:'https://cdn.3dassets.dev/assets/28193/v1/model.glb',
   facadeShop:'https://cdn.3dassets.dev/assets/28204/v1/model.glb',
   workshopShed:'https://cdn.3dassets.dev/assets/215/v1/model.glb',
+  compactHouse:'https://cdn.3dassets.dev/assets/190/v1/model.glb',
+  graffiti:'https://cdn.3dassets.dev/assets/37798/v1/model.glb',
   shopOpen:'https://cdn.3dassets.dev/assets/36527/v1/model.glb',
   shopClosed:'https://cdn.3dassets.dev/assets/36528/v1/model.glb',
   wall:'https://cdn.3dassets.dev/assets/36529/v1/model.glb',
@@ -133,8 +135,8 @@ const ASSET = {
   fuelCan:'https://cdn.3dassets.dev/assets/15444/v1/model.glb',
   helmet:'https://cdn.3dassets.dev/assets/15435/v1/model.glb'
 };
-const REQUIRED = ['streetSection','cobble','dirt','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','facadeConcrete','facadeDoor','facadeShutter','facadeWindow','facadeShop','workshopShed','shopOpen','stall','utility','cable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
-const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet'];
+const REQUIRED = ['streetSection','cobble','dirt','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','facadeConcrete','facadeDoor','facadeShutter','facadeWindow','facadeShop','workshopShed','compactHouse','shopOpen','stall','utility','cable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
+const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet','graffiti'];
 const QS = new URLSearchParams(location.search);const SELFTEST=QS.has('selftest'),PREVIEW=QS.has('preview');
 const errors = [];
 window.addEventListener('error',e=>errors.push(String(e.message||e.error)));
@@ -226,7 +228,7 @@ function roadGrid(){
 }
 function ground(){
   // Tierra compactada en lotes y bordes; el césped queda solo en vacíos, no como alfombra infinita.
-  for(let x=-42;x<=42;x+=6)for(let z=-42;z<=42;z+=6){if(Math.abs(x)<7||Math.abs(z+18)<3||Math.abs(z-20)<3||Math.abs(x-16)<3)continue;put('dirt',x,z,((x+z)%12)*1.1,1.04,-.015)}
+  for(let x=-42;x<=42;x+=6)for(let z=-42;z<=42;z+=6){if(Math.abs(x)<4.1||Math.abs(z+18)<3||Math.abs(z-20)<3||Math.abs(x-16)<3)continue;put('dirt',x,z,((x+z)%12)*1.1,1.04,-.015)}
   if(cache.has('grass'))[[-31,31],[-36,33],[31,-34],[-33,-34]].forEach((q,i)=>put('grass',q[0],q[1],i*43,.72,0));
 }
 function buildings(){
@@ -249,6 +251,9 @@ function buildings(){
     }
     idx++;
   }
+  // Casas bajas completas detrás de algunos frentes: techo metálico y volumen real para que la calle no parezca un set plano.
+  [[-1,-32],[1,-22],[-1,-8],[1,14],[-1,30],[1,38]].forEach((q,i)=>{const side=q[0],z=q[1];put('compactHouse',side*7.0,z,side<0?90:-90,.74,0);addCollider(side*6.7,z,1.25,2.15,'building')});
+  if(cache.has('graffiti')){put('graffiti',-5.42,27,90,.92,.04);put('graffiti',5.42,-34,-90,.86,.04)}
   // Pulpería y taller: abiertos hacia la calle, con herrería/cortina y objetos de trabajo visibles.
   const pul=tintEntity(put('shopOpen',-5.48,-6,90,1.0,.01),new pc.Color(.18,.52,.50),1);
   put('facadeShop',-5.62,-2,90,1.0,0);
@@ -269,7 +274,7 @@ function buildings(){
   const poles=[[-3.72,-37],[-3.72,-9],[-3.72,19],[-3.72,39],[3.72,-25],[3.72,6],[3.72,33]];
   poles.forEach((q,i)=>{put('utility',q[0],q[1],i%2?90:0,.78,0);addCollider(q[0],q[1],.28,.28,'pole')});
   if(cache.has('cable'))[[-30,0],[-8,180],[15,0],[34,180]].forEach(q=>put('cable',0,q[0],q[1],.93,0));
-  [[-3.48,-30],[3.48,-15],[-3.48,1],[3.48,17],[-3.48,34]].forEach((q,i)=>{put('lamp',q[0],q[1],i%2?180:0,.66,0);const l=new pc.Entity('farola');l.addComponent('light',{type:'omni',color:new pc.Color(1,.57,.27),intensity:0,range:11,castShadows:false});l.setPosition(q[0],4.2,q[1]);app.root.addChild(l);lamps.push(l)});
+  [[-3.48,-41],[3.48,-22],[-3.48,4],[3.48,24],[-3.48,41]].forEach((q,i)=>{put('lamp',q[0],q[1],i%2?180:0,.66,0);const l=new pc.Entity('farola');l.addComponent('light',{type:'omni',color:new pc.Color(1,.57,.27),intensity:0,range:11,castShadows:false});l.setPosition(q[0],4.2,q[1]);app.root.addChild(l);lamps.push(l)});
   [[-4.62,-3],[4.62,11],[-4.62,25]].forEach(q=>{const e=put('rocking',q[0],q[1],q[0]<0?90:-90,.92,0);pushables.push({e,x:q[0],z:q[1],vx:0,vz:0,r:.65})});
 }
 function scenery(){if(cache.has('volcano'))instance('volcano',world,{p:[0,-1,96],r:[0,180,0],s:[1.05,1.05,1.05],cast:false,receive:false})}
