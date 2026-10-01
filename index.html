@@ -86,6 +86,7 @@ const ASSET = {
   grass:'https://cdn.3dassets.dev/assets/34067/v1/model.glb',
   cobble:'https://cdn.3dassets.dev/assets/36676/v1/model.glb',
   dirt:'https://cdn.3dassets.dev/assets/27440/v1/model.glb',
+  yardGrit:'https://cdn.3dassets.dev/assets/38712/v1/model.glb',
   road:'https://cdn.3dassets.dev/assets/36523/v1/model.glb',
   pavement:'https://cdn.3dassets.dev/assets/36522/v1/model.glb',
   drain:'https://cdn.3dassets.dev/assets/36521/v1/model.glb',
@@ -135,7 +136,7 @@ const ASSET = {
   fuelCan:'https://cdn.3dassets.dev/assets/15444/v1/model.glb',
   helmet:'https://cdn.3dassets.dev/assets/15435/v1/model.glb'
 };
-const REQUIRED = ['streetSection','cobble','dirt','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','facadeConcrete','facadeDoor','facadeShutter','facadeWindow','facadeShop','workshopShed','compactHouse','shopOpen','stall','utility','cable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
+const REQUIRED = ['streetSection','cobble','dirt','yardGrit','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','facadeConcrete','facadeDoor','facadeShutter','facadeWindow','facadeShop','workshopShed','compactHouse','shopOpen','stall','utility','cable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
 const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet','graffiti'];
 const QS = new URLSearchParams(location.search);const SELFTEST=QS.has('selftest'),PREVIEW=QS.has('preview');
 const errors = [];
@@ -228,11 +229,12 @@ function roadGrid(){
 }
 function ground(){
   // Tierra compactada en lotes y bordes; el césped queda solo en vacíos, no como alfombra infinita.
-  for(let x=-42;x<=42;x+=6)for(let z=-42;z<=42;z+=6){if(Math.abs(x)<4.1||Math.abs(z+18)<3||Math.abs(z-20)<3||Math.abs(x-16)<3)continue;put('dirt',x,z,((x+z)%12)*1.1,1.04,-.015)}
+  for(let x=-42;x<=42;x+=6)for(let z=-42;z<=42;z+=6){if(Math.abs(x)<4.1||Math.abs(z+18)<3||Math.abs(z-20)<3||Math.abs(x-16)<3)continue;put('yardGrit',x,z,((x+z)%12)*1.1,1.505,-.23)}
   if(cache.has('grass'))[[-31,31],[-36,33],[31,-34],[-33,-34]].forEach((q,i)=>put('grass',q[0],q[1],i*43,.72,0));
 }
 function buildings(){
   const facadePattern=['facadeWindow','facadeConcrete','facadeDoor','facadeShutter','facadeShop','facadeConcrete','facadeWindow','facadeShutter'];
+  const barrioPaint=[new pc.Color(.33,.59,.58),new pc.Color(.82,.67,.35),new pc.Color(.72,.45,.42),new pc.Color(.42,.57,.72),new pc.Color(.70,.69,.58)];
   let idx=0;
   // Frente urbano continuo pero irregular: retranqueos pequeños, puertas de acero, cortinas y concreto envejecido.
   for(let z=-40;z<=40;z+=4){
@@ -243,7 +245,8 @@ function buildings(){
       const setback=[0,.18,.42,.08,.30,.12][(idx+(side>0?2:0))%6];
       const x=side*(5.55+setback*.55),yaw=side<0?90:-90;
       const scale=(name==='facadeShop'?1.0:.98)+(idx%3)*.008;
-      put(name,x,z+(idx%2?-.08:.10),yaw,scale,0);
+      const facade=put(name,x,z+(idx%2?-.08:.10),yaw,scale,0);
+      if((idx+(side>0?1:0))%3===0)tintEntity(facade,barrioPaint[(idx+(side>0?2:0))%barrioPaint.length],1);
       addCollider(side*5.78,z,1.15,1.78,'building');
       // Unos pocos módulos pintados sobreviven entre fachadas envejecidas: identidad sin efecto "kit de colores".
       if(idx%9===4){const accent=put('shopOpen',side*(5.48+setback*.55),z+.06,yaw,.96,.01);tintEntity(accent,side<0?new pc.Color(.19,.48,.50):new pc.Color(.66,.43,.23),1)}
@@ -369,9 +372,9 @@ const audio={ctx:null,master:null,engineGain:null,o1:null,o2:null,noise:null,noi
    MISIONES
    ========================================================= */
 const missions=[
-  {title:'Fritanga caliente',text:'Recoge en la fritanga y entrega en la casa turquesa.',kind:'delivery',steps:[[-6,10],[-8,31]],reward:85},
+  {title:'Fritanga caliente',text:'Recoge en la fritanga y entrega en la casa turquesa.',kind:'delivery',steps:[[-4.0,10],[-4.1,31]],reward:85},
   {title:'Carrera entre cuadras',text:'Pasa los 5 puntos antes de 45 segundos.',kind:'race',steps:[[0,-32],[0,18],[16,20],[16,-18],[0,-18],[0,-32]],time:45,reward:120},
-  {title:'Paquetes del barrio',text:'Tres entregas rápidas: pulpería, parada y taller.',kind:'delivery',steps:[[-8,-6],[5,-26],[8,6]],reward:140},
+  {title:'Paquetes del barrio',text:'Tres entregas rápidas: pulpería, parada y taller.',kind:'delivery',steps:[[-4.1,-6],[3.7,-26],[4.1,6]],reward:140},
   {title:'Acrobacias',text:'Mantén un wheelie durante 3.0 s acumulados.',kind:'stunt',goal:3,reward:110}
 ];
 const mission={index:0,step:0,time:0,value:0,doneDelay:0};let money=250,score=0;
