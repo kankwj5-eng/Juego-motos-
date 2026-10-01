@@ -17,7 +17,7 @@ jobs:
       - name: Capture and diagnose
         run: |
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
-          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --window-size=1440,900 --virtual-time-budget=26000 --screenshot=visual.png 'http://127.0.0.1:8000/?selftest=1' >/tmp/chrome.out 2>/tmp/chrome.err || true
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --window-size=1440,900 --virtual-time-budget=26000 --screenshot=visual.png 'http://127.0.0.1:8000/?preview=1' >/tmp/chrome.out 2>/tmp/chrome.err || true
           "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --virtual-time-budget=26000 --dump-dom 'http://127.0.0.1:8000/?selftest=1' >/tmp/dom.txt 2>>/tmp/chrome.err || true
           echo '--- page diagnostics ---'
           grep -E 'SELFTEST:|Faltan recursos|Asset opcional|loadtext' /tmp/dom.txt | tail -n 80 || true
