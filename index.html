@@ -106,9 +106,14 @@ const ASSET = {
   lamp:'https://cdn.3dassets.dev/assets/28261/v1/model.glb',
   rider:'https://cdn.3dassets.dev/assets/27863/v1/model.glb',
   puddle:'https://cdn.3dassets.dev/assets/36422/v1/model.glb',
-  speedBump:'https://cdn.3dassets.dev/assets/25306/v1/model.glb'
+  speedBump:'https://cdn.3dassets.dev/assets/25306/v1/model.glb',
+  pothole:'https://cdn.3dassets.dev/assets/26984/v1/model.glb',
+  palm:'https://cdn.3dassets.dev/assets/28704/v1/model.glb',
+  clothesline:'https://cdn.3dassets.dev/assets/36690/v1/model.glb',
+  handcart:'https://cdn.3dassets.dev/assets/222/v1/model.glb',
+  ramp:'https://cdn.3dassets.dev/assets/24195/v1/model.glb'
 };
-const REQUIRED = ['grass','cobble','dirt','bike','rider','puddle','speedBump','shopOpen','shopClosed','wall','stall','utility','banana','chicken','dog','person','bus','church','hoop','rocking','lamp'];
+const REQUIRED = ['grass','cobble','dirt','bike','rider','puddle','speedBump','pothole','palm','clothesline','handcart','ramp','shopOpen','shopClosed','wall','stall','utility','banana','chicken','dog','person','bus','church','hoop','rocking','lamp'];
 const OPTIONAL = ['trafficBike','cable','gate','door','volcano'];
 const SELFTEST = new URLSearchParams(location.search).has('selftest');
 const errors = [];
@@ -175,7 +180,7 @@ function walk(n,fn){fn(n);for(const c of n.children||[])walk(c,fn)}
 /* =========================================================
    MUNDO
    ========================================================= */
-const colliders=[],pushables=[],lamps=[],labels=[],surfaceZones=[],bumps=[],ramps=[];
+const colliders=[],pushables=[],lamps=[],labels=[],surfaceZones=[],bumps=[],potholes=[],ramps=[];
 function addCollider(x,z,hx,hz,type='wall'){colliders.push({x,z,hx,hz,type})}
 function addLabel(text,x,y,z){const el=document.createElement('div');el.className='worldLabel';el.textContent=text;$('#labels').appendChild(el);labels.push({el,pos:new pc.Vec3(x,y,z)})}
 function put(name,x,z,yaw=0,scale=1,y=.02,parent=world){return instance(name,parent,{p:[x,y,z],r:[0,yaw,0],s:[scale,scale,scale]})}
@@ -189,8 +194,9 @@ function roadGrid(){
   // Charcos y topes son modelos GLB reales; la zona física coincide con lo que se ve.
   put('puddle',-7,18,0,1.45,.035);put('puddle',18,-8,90,1.35,.035);
   put('speedBump',0,-11,0,1.2,.025);put('speedBump',-18,8,90,1.2,.025);put('speedBump',18,25,90,1.2,.025);
-  bumps.push({x:0,z:-11,r:2,k:.13},{x:-18,z:8,r:2,k:.15},{x:18,z:25,r:2,k:.11});
-  ramps.push({x:32,z:-23,r:2.5,k:4.2});
+  put('pothole',9,0,0,.52,-.015);put('pothole',32,7,15,.45,-.02);
+  bumps.push({x:0,z:-11,r:2,k:.13},{x:-18,z:8,r:2,k:.15},{x:18,z:25,r:2,k:.11});potholes.push({x:9,z:0,r:1.25,k:.20},{x:32,z:7,r:1.15,k:.23});
+  put('ramp',32,-23,0,1.45,.015);ramps.push({x:32,z:-23,r:2.5,k:4.2});
 }
 function ground(){for(let x=-32;x<=32;x+=8)for(let z=-32;z<=32;z+=8)put('grass',x,z,0,1,.0)}
 function buildings(){
@@ -211,6 +217,8 @@ function buildings(){
   put('hoop',-30,21,0,1,0);put('hoop',-24,29,180,1,0);addLabel('CANCHA',-27,4.2,25);
   // Árboles/plantas y mobiliario
   [[-35,-9],[35,9],[-34,12],[13,34],[-13,34],[35,-31],[9,-34],[-34,-31],[28,13],[28,-14]].forEach((p,i)=>put('banana',p[0],p[1],i*37,1+(i%3)*.12,0));
+  [[-29,11],[29,28],[-8,31],[34,-24]].forEach((p,i)=>put('palm',p[0],p[1],i*53,.88+(i%2)*.12,0));
+  put('clothesline',-10,-30,0,.82,0);put('clothesline',11,30,180,.82,0);put('handcart',-15,-13,35,.88,0);put('handcart',24,12,195,.82,0);
   // Postes, cables y farolas
   [[-20,-20],[-20,20],[20,-20],[20,20],[0,-34],[0,34],[-34,0],[34,0]].forEach((p,i)=>{put('utility',p[0],p[1],i%2?90:0,.78,0);addCollider(p[0],p[1],.35,.35,'pole')});
   // Cableado bajo y enredado típico de calle: módulos de 6 m con caída real modelada.
@@ -256,8 +264,8 @@ function physics(dt){
   const dx=(fx*bike.speed + sideX*bike.slip*bike.speed*.22*bike.steer)*dt,dz=(fz*bike.speed + sideZ*bike.slip*bike.speed*.22*bike.steer)*dt;
   bike.pos.x+=dx;bike.pos.z+=dz;bike.distance+=Math.hypot(dx,dz);
   // Suspensión, topes, baches y rampa
-  let kick=0;for(const b of bumps){const d=Math.hypot(bike.pos.x-b.x,bike.pos.z-b.z);if(d<b.r&&speedAbs>3)kick=Math.max(kick,b.k*(1-d/b.r)*speedAbs)}for(const r of ramps){const d=Math.hypot(bike.pos.x-r.x,bike.pos.z-r.z);if(d<r.r&&speedAbs>5&&bike.onGround){bike.vy=Math.max(bike.vy,r.k+speedAbs*.08);bike.onGround=false}}
-  const roadNoise=Math.sin(performance.now()*.015+bike.pos.x*2.1)*surf.bump*speedN;bike.susp=damp(bike.susp,clamp(roadNoise+kick*.03,-CONFIG.suspensionTravel,CONFIG.suspensionTravel),CONFIG.suspensionSpring,dt);
+  let kick=0,dip=0;for(const b of bumps){const d=Math.hypot(bike.pos.x-b.x,bike.pos.z-b.z);if(d<b.r&&speedAbs>3)kick=Math.max(kick,b.k*(1-d/b.r)*speedAbs)}for(const p of potholes){const d=Math.hypot(bike.pos.x-p.x,bike.pos.z-p.z);if(d<p.r&&speedAbs>2){dip=Math.min(dip,-p.k*(1-d/p.r)*Math.min(speedAbs,14));cameraShake=Math.max(cameraShake,.035*speedN)}}for(const r of ramps){const d=Math.hypot(bike.pos.x-r.x,bike.pos.z-r.z);if(d<r.r&&speedAbs>5&&bike.onGround){bike.vy=Math.max(bike.vy,r.k+speedAbs*.08);bike.onGround=false}}
+  const roadNoise=Math.sin(performance.now()*.015+bike.pos.x*2.1)*surf.bump*speedN;bike.susp=damp(bike.susp,clamp(roadNoise+kick*.03+dip*.025,-CONFIG.suspensionTravel,CONFIG.suspensionTravel),CONFIG.suspensionSpring,dt);
   if(!bike.onGround){bike.vy-=CONFIG.gravity*dt;bike.y+=bike.vy*dt;bike.airtime+=dt;if(bike.y<=.18){if(bike.vy<-6.2)fallBike('Aterrizaje duro');bike.y=.18;bike.vy=0;bike.onGround=true}}else bike.y=.18+bike.susp;
   collideBike();
   if(Math.abs(bike.lean)>CONFIG.fallLean&&speedAbs<2.2)fallBike('Perdiste el equilibrio');if(bike.pitch>CONFIG.fallWheelie)fallBike('Wheelie pasado');
