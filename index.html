@@ -77,7 +77,7 @@ const CONFIG = {
   },
   dayLength: 165,
   camera: [
-    {dist:6.9,height:2.65,look:1.6,fov:58},
+    {dist:7.45,height:2.82,look:1.75,fov:57},
     {dist:4.15,height:1.85,look:1.8,fov:64},
     {dist:0.62,height:1.47,look:4.6,fov:71}
   ]
@@ -94,6 +94,12 @@ const ASSET = {
   trafficBike:'https://cdn.3dassets.dev/assets/15420/v1/model.glb',
   rickshaw:'https://cdn.3dassets.dev/assets/36560/v1/model.glb',
   bicycle:'https://cdn.3dassets.dev/assets/36561/v1/model.glb',
+  facadeConcrete:'https://cdn.3dassets.dev/assets/28189/v1/model.glb',
+  facadeDoor:'https://cdn.3dassets.dev/assets/28190/v1/model.glb',
+  facadeShutter:'https://cdn.3dassets.dev/assets/28192/v1/model.glb',
+  facadeWindow:'https://cdn.3dassets.dev/assets/28193/v1/model.glb',
+  facadeShop:'https://cdn.3dassets.dev/assets/28204/v1/model.glb',
+  workshopShed:'https://cdn.3dassets.dev/assets/215/v1/model.glb',
   shopOpen:'https://cdn.3dassets.dev/assets/36527/v1/model.glb',
   shopClosed:'https://cdn.3dassets.dev/assets/36528/v1/model.glb',
   wall:'https://cdn.3dassets.dev/assets/36529/v1/model.glb',
@@ -126,7 +132,7 @@ const ASSET = {
   fuelCan:'https://cdn.3dassets.dev/assets/15444/v1/model.glb',
   helmet:'https://cdn.3dassets.dev/assets/15435/v1/model.glb'
 };
-const REQUIRED = ['road','pavement','drain','cobble','dirt','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','shopOpen','shopClosed','wall','stall','utility','cable','wallCable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
+const REQUIRED = ['road','pavement','drain','cobble','dirt','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','facadeConcrete','facadeDoor','facadeShutter','facadeWindow','facadeShop','workshopShed','shopOpen','stall','utility','cable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
 const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet'];
 const QS = new URLSearchParams(location.search);const SELFTEST=QS.has('selftest'),PREVIEW=QS.has('preview');
 const errors = [];
@@ -201,7 +207,7 @@ function tintEntity(e,tint,max=3){if(!e)return e;let changed=0;for(const r of e.
 function roadGrid(){
   // Eje principal: asfalto continuo de 8 m, con aceras y tragantes reales a ambos lados.
   for(let z=-44;z<=44;z+=4){
-    put('road',-2,z,90,1,.005);put('road',2,z,90,1,.006);
+    const flip=((z+44)/4)%2===0;put('road',-2,z,flip?90:270,1,.005);put('road',2,z,flip?270:90,1,.006);
     const left=((z+44)/4)%5===2?'drain':'pavement',right=((z+44)/4)%5===4?'drain':'pavement';
     put(left,-5.15,z,90,1,.012);put(right,5.15,z,-90,1,.012);
   }
@@ -227,43 +233,45 @@ function ground(){
   if(cache.has('grass'))[[-31,31],[-36,33],[31,-34],[-33,-34]].forEach((q,i)=>put('grass',q[0],q[1],i*43,.72,0));
 }
 function buildings(){
-  const paint=[new pc.Color(.20,.55,.55),new pc.Color(.80,.59,.25),new pc.Color(.65,.34,.39),new pc.Color(.28,.46,.65),new pc.Color(.68,.67,.55),new pc.Color(.45,.58,.38)];
-  const pattern=['shopClosed','wall','door','shopOpen','wall','gate','shopClosed','wall'];
+  const facadePattern=['facadeWindow','facadeConcrete','facadeDoor','facadeShutter','facadeShop','facadeConcrete','facadeWindow','facadeShutter'];
   let idx=0;
-  // Fachadas casi pegadas a la acera: la calle se lee como barrio urbano, no como lotes aislados.
+  // Frente urbano continuo pero irregular: retranqueos pequeños, puertas de acero, cortinas y concreto envejecido.
   for(let z=-40;z<=40;z+=4){
     if(Math.abs(z+18)<3||Math.abs(z-20)<3)continue;
     for(const side of [-1,1]){
-      const x=side*8.0,yaw=side<0?90:-90,name=pattern[(idx+(side>0?2:0))%pattern.length];
-      const e=tintEntity(put(cache.has(name)?name:'wall',x,z,yaw,1,0),paint[(idx+(side>0?3:0))%paint.length],2);
-      addCollider(x,z,1.55,1.86,'building');
-      if(idx%4===0&&cache.has('wallCable'))put('wallCable',side*7.72,z,yaw,.92,.55);
-      if(idx%7===2&&cache.has('satellite'))put('satellite',side*7.55,z+.5,yaw,.72,2.75);
+      const variant=(idx+(side>0?3:0))%facadePattern.length;
+      const name=facadePattern[variant];
+      const setback=[0,.18,.42,.08,.30,.12][(idx+(side>0?2:0))%6];
+      const x=side*(7.72+setback),yaw=side<0?90:-90;
+      const scale=(name==='facadeShop'?1.0:.98)+(idx%3)*.008;
+      put(name,x,z+(idx%2?-.08:.10),yaw,scale,0);
+      addCollider(side*8.0,z,1.52,1.78,'building');
+      // Unos pocos módulos pintados sobreviven entre fachadas envejecidas: identidad sin efecto "kit de colores".
+      if(idx%9===4){const accent=put('shopOpen',side*(7.62+setback),z+.06,yaw,.98,.01);tintEntity(accent,side<0?new pc.Color(.19,.48,.50):new pc.Color(.66,.43,.23),1)}
+      if(idx%8===2&&cache.has('satellite'))put('satellite',side*7.45,z+.45,yaw,.66,2.75);
     }
     idx++;
   }
-  // Comercios reconocibles por función y contexto, no por edificios genéricos aislados.
-  tintEntity(put('shopOpen',-8,-6,90,1.04,0),new pc.Color(.20,.58,.55),2);
-  tintEntity(put('shopOpen',8,6,-90,1.04,0),new pc.Color(.79,.57,.20),2);
-  put('stall',-6.0,10,90,.92,0);put('stall',6.0,16,-90,.90,0);
-  addLabel('PULPERÍA LA ESQUINA',-7.2,2.55,-6);addLabel('TALLER DE MOTOS',7.2,2.55,6);addLabel('FRITANGA',-6.0,2.2,10);addLabel('FRESCOS',6.0,2.2,16);
-  // Taller: motos, herramientas, bidón y casco a pie de calle.
-  put('commuterBike',6.15,4.0,210,.92,.03);put('commuterBike',6.05,7.1,165,.92,.03);
-  if(cache.has('toolTrolley'))put('toolTrolley',6.3,5.2,-90,.82,.02);if(cache.has('fuelCan'))put('fuelCan',6.2,6.0,0,.85,.02);if(cache.has('helmet'))put('helmet',6.5,6.8,0,.8,.55);
-  // Caponera, bicicleta y parada: señales muy visibles de movilidad barrial.
-  put('rickshaw',4.3,-26,180,.88,.02);put('bicycle',-5.9,-11,18,.92,.02);addLabel('PARADA',5.1,2.2,-25.5);
-  // Cancha lateral y un fondo cívico discreto.
+  // Pulpería y taller: abiertos hacia la calle, con herrería/cortina y objetos de trabajo visibles.
+  const pul=tintEntity(put('shopOpen',-7.65,-6,90,1.02,.01),new pc.Color(.18,.52,.50),1);
+  put('facadeShop',-7.83,-2,90,1.0,0);
+  put('workshopShed',8.75,6,-90,.78,0);
+  put('facadeShutter',8.02,12,-90,.99,0);
+  put('stall',-5.95,10,90,.92,0);put('stall',5.95,16,-90,.90,0);
+  addLabel('PULPERÍA LA ESQUINA',-7.0,2.55,-6);addLabel('TALLER DE MOTOS',7.0,2.55,6);addLabel('FRITANGA',-6.0,2.2,10);addLabel('FRESCOS',6.0,2.2,16);
+  put('commuterBike',6.0,4.0,210,.92,.03);put('commuterBike',6.05,7.25,165,.92,.03);
+  if(cache.has('toolTrolley'))put('toolTrolley',6.35,5.0,-90,.82,.02);if(cache.has('fuelCan'))put('fuelCan',6.3,6.15,0,.85,.02);if(cache.has('helmet'))put('helmet',6.45,6.85,0,.8,.55);
+  put('rickshaw',4.25,-26,180,.88,.02);put('bicycle',-5.8,-11,18,.92,.02);addLabel('PARADA',5.0,2.2,-25.5);
   put('hoop',-30,25,0,1,0);put('hoop',-24,34,180,1,0);addLabel('CANCHA',-27,4.0,29.5);
   if(cache.has('church')){put('church',-35,39,200,1.1,0);addCollider(-35,39,2.2,2.2,'building')}
-  // Vegetación tropical en patios/lotes, no bloqueando la calle principal.
   [[-36,-8],[35,10],[-34,12],[29,32],[34,-31],[-34,-31],[27,13]].forEach((q,i)=>put('banana',q[0],q[1],i*47,.9+(i%3)*.08,0));
   if(cache.has('palm'))[[-30,10],[30,29],[-28,37]].forEach((q,i)=>put('palm',q[0],q[1],i*61,.86,0));
   if(cache.has('clothesline')){put('clothesline',-11,-30,0,.82,0);put('clothesline',11,31,180,.82,0)}
   if(cache.has('handcart')){put('handcart',-5.6,12,35,.80,0);put('handcart',6.1,-15,195,.76,0)}
-  // Postes más próximos y cableado denso sobre el eje, como en las referencias de Managua/Ciudad Sandino.
-  const poles=[[-5.8,-38],[-5.8,-24],[-5.8,-10],[-5.8,5],[-5.8,24],[-5.8,39],[5.8,-32],[5.8,-17],[5.8,-2],[5.8,14],[5.8,31]];
+  // Cableado irregular y espaciado: presente, pero dejando respirar el cielo y la lectura de la calle.
+  const poles=[[-5.8,-37],[-5.8,-9],[-5.8,19],[-5.8,39],[5.8,-25],[5.8,6],[5.8,33]];
   poles.forEach((q,i)=>{put('utility',q[0],q[1],i%2?90:0,.78,0);addCollider(q[0],q[1],.28,.28,'pole')});
-  if(cache.has('cable'))for(let z=-38;z<=34;z+=6){put('cable',0,z,0,.96,0);if(z%12===-2||z%12===10)put('cable',0,z+1.4,180,.91,0)}
+  if(cache.has('cable'))[[-30,0],[-8,180],[15,0],[34,180]].forEach(q=>put('cable',0,q[0],q[1],.93,0));
   [[-5.1,-30],[5.1,-15],[-5.1,1],[5.1,17],[-5.1,34]].forEach((q,i)=>{put('lamp',q[0],q[1],i%2?180:0,.66,0);const l=new pc.Entity('farola');l.addComponent('light',{type:'omni',color:new pc.Color(1,.57,.27),intensity:0,range:11,castShadows:false});l.setPosition(q[0],4.2,q[1]);app.root.addChild(l);lamps.push(l)});
   [[-6.0,-3],[6.0,11],[-6.0,25]].forEach(q=>{const e=put('rocking',q[0],q[1],q[0]<0?90:-90,.92,0);pushables.push({e,x:q[0],z:q[1],vx:0,vz:0,r:.65})});
 }
@@ -275,7 +283,7 @@ function surfaceAt(x,z){for(let i=surfaceZones.length-1;i>=0;i--){const q=surfac
    ========================================================= */
 const bike={root:new pc.Entity('MotoPlayer'),visual:null,rider:null,wheels:[],frontNodes:[],pos:new pc.Vec3(0,.18,-12),yaw:0,speed:0,steer:0,lean:0,pitch:0,vy:0,y:.18,onGround:true,fallen:false,fallTimer:0,rpm:1200,susp:0,wheelAngle:0,slip:0,surface:'asphalt',cameraMode:0,headlight:true,color:0,exhaust:0,airtime:0,wheelieTime:0,lastSafe:new pc.Vec3(0,.18,-12),distance:0};actors.addChild(bike.root);
 const headLamp=new pc.Entity('FaroMoto');headLamp.addComponent('light',{type:'spot',color:new pc.Color(1,.91,.73),intensity:1.9,range:24,innerConeAngle:19,outerConeAngle:33,castShadows:false});headLamp.setLocalPosition(0,1.0,.45);headLamp.setLocalEulerAngles(-82,0,0);bike.root.addChild(headLamp);
-function setupBike(){bike.visual=instance('bike',bike.root,{p:[0,-.10,0],r:[0,0,0],s:[.92,.92,.92]});bike.rider=instance('rider',bike.root,{p:[0,.22,-.10],r:[0,0,0],s:[.88,.88,.88],name:'Piloto'});walk(bike.visual,n=>{const nm=(n.name||'').toLowerCase();if(nm.includes('wheel')){const b=n.getLocalEulerAngles().clone();bike.wheels.push({n,b})}if(nm.includes('front')||nm.includes('handle')||nm.includes('steer')){const b=n.getLocalEulerAngles().clone();bike.frontNodes.push({n,b})}});setBikeColor(0)}
+function setupBike(){bike.visual=instance('bike',bike.root,{p:[0,-.10,0],r:[0,0,0],s:[.92,.92,.92]});bike.rider=instance('rider',bike.root,{p:[0,.18,-.11],r:[0,0,0],s:[.80,.80,.80],name:'Piloto'});walk(bike.visual,n=>{const nm=(n.name||'').toLowerCase();if(nm.includes('wheel')){const b=n.getLocalEulerAngles().clone();bike.wheels.push({n,b})}if(nm.includes('front')||nm.includes('handle')||nm.includes('steer')){const b=n.getLocalEulerAngles().clone();bike.frontNodes.push({n,b})}});setBikeColor(0)}
 function setBikeColor(i){bike.color=i;const colors=[new pc.Color(.05,.45,.58),new pc.Color(.82,.12,.08),new pc.Color(.95,.57,.04),new pc.Color(.035,.035,.04),new pc.Color(.82,.82,.77)];if(!bike.visual)return;const tint=colors[i]||colors[0];let changed=0;for(const r of bike.visual.findComponents('render'))for(const mi of r.meshInstances){const old=mi.material;if(!old||!old.clone)continue;const name=((old.name||'')+' '+(mi.node?.name||'')).toLowerCase();if(/tire|tyre|rubber|glass|chrome|metal|wheel|rim|seat/.test(name))continue;if(changed<4){const m=old.clone();if(m.diffuse){m.diffuse=tint.clone();m.update();mi.material=m;changed++}}}toast(['Turquesa','Rojo','Amarillo','Negro','Blanco'][i]+' aplicado')}
 function physics(dt){
   if(paused||!started)return;
@@ -374,10 +382,10 @@ function renderMission(){const m=currentMission();$('#missionTitle').textContent
 /* =========================================================
    CÁMARA / UI
    ========================================================= */
-let cameraShake=0,paused=false,started=false,dayT=.26,toastTimer=0;
+let cameraShake=0,paused=false,started=false,dayT=.22,toastTimer=0;
 function cycleCamera(){bike.cameraMode=(bike.cameraMode+1)%CONFIG.camera.length;toast('Cámara '+(bike.cameraMode+1))}
 function updateCamera(dt){const c=CONFIG.camera[bike.cameraMode],speedN=clamp(Math.abs(bike.speed)/CONFIG.maxSpeed,0,1),fx=Math.sin(bike.yaw),fz=Math.cos(bike.yaw);cameraShake=damp(cameraShake,0,5.8,dt);const shake=(Math.random()-.5)*cameraShake+(Math.random()-.5)*CONFIG.surfaces[bike.surface].bump*speedN;const tx=bike.pos.x-fx*c.dist,tz=bike.pos.z-fz*c.dist;camera.setPosition(damp(camera.getPosition().x,tx,5.8,dt)+shake,damp(camera.getPosition().y,bike.y+c.height,6.5,dt)+shake*.45,damp(camera.getPosition().z,tz,5.8,dt)+shake);camera.lookAt(bike.pos.x+fx*c.look,bike.y+.75,bike.pos.z+fz*c.look);camera.camera.fov=damp(camera.camera.fov,c.fov+speedN*7,4,dt)}
-function updateDay(dt){dayT=(dayT+dt/CONFIG.dayLength)%1;const a=dayT*Math.PI*2;const daylight=clamp(Math.sin(a)*.72+.45,.03,1),night=1-daylight;const sunset=clamp(1-Math.abs(dayT-.25)*9,0,1);sun.light.intensity=.08+1.36*daylight;moon.light.intensity=night*.24;app.scene.ambientLight.set(.055+.18*daylight,.07+.20*daylight,.10+.25*daylight);const day=[.36,.55,.75],dusk=[.74,.42,.29],nite=[.025,.045,.085];let r=nite[0]+(day[0]-nite[0])*daylight,g=nite[1]+(day[1]-nite[1])*daylight,b=nite[2]+(day[2]-nite[2])*daylight;r+=(dusk[0]-r)*sunset*.46;g+=(dusk[1]-g)*sunset*.46;b+=(dusk[2]-b)*sunset*.46;camera.camera.clearColor.set(r,g,b);try{app.scene.fogColor.set(r*.92,g*.92,b*.94)}catch{}for(const l of lamps)l.light.intensity=night>.42?1.25*night:0;headLamp.light.intensity=bike.headlight?(night>.2?2.25:.7):0;audio.crickets(night)}
+function updateDay(dt){dayT=(dayT+dt/CONFIG.dayLength)%1;const a=dayT*Math.PI*2;const daylight=clamp(Math.sin(a)*.72+.45,.03,1),night=1-daylight;const sunset=clamp(1-Math.abs(dayT-.49)*15,0,1)+clamp(1-Math.abs(dayT-.01)*15,0,1);sun.light.intensity=.08+1.36*daylight;moon.light.intensity=night*.24;app.scene.ambientLight.set(.06+.20*daylight,.075+.22*daylight,.105+.27*daylight);const day=[.31,.55,.82],dusk=[.84,.43,.25],nite=[.025,.045,.085];let r=nite[0]+(day[0]-nite[0])*daylight,g=nite[1]+(day[1]-nite[1])*daylight,b=nite[2]+(day[2]-nite[2])*daylight;r+=(dusk[0]-r)*sunset*.54;g+=(dusk[1]-g)*sunset*.54;b+=(dusk[2]-b)*sunset*.54;camera.camera.clearColor.set(r,g,b);try{app.scene.fogColor.set(r*.93,g*.94,b*.96)}catch{}for(const l of lamps)l.light.intensity=night>.42?1.25*night:0;headLamp.light.intensity=bike.headlight?(night>.2?2.25:.7):0;audio.crickets(night)}
 function updateHUD(){const kmh=Math.abs(bike.speed)*3.6;$('#speed').innerHTML=`${Math.round(kmh)} <small>KM/H</small>`;$('#rpm').textContent=Math.round(bike.rpm/100)*100;$('#grip').textContent=Math.round(CONFIG.surfaces[bike.surface].grip*100)+'%';$('#surface').textContent=CONFIG.surfaces[bike.surface].label;drawMap();updateLabels()}
 function drawMap(){const c=$('#map'),ctx=c.getContext('2d'),W=c.width,H=c.height,s=W/(CONFIG.worldHalf*2);ctx.clearRect(0,0,W,H);ctx.fillStyle='#171816';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#555a5a';ctx.lineWidth=8*s;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();ctx.strokeStyle='#7f766a';ctx.lineWidth=4*s;for(const z of [-18,20]){ctx.beginPath();ctx.moveTo(0,H/2-z*s);ctx.lineTo(W,H/2-z*s);ctx.stroke()}ctx.strokeStyle='#8a6f4e';ctx.lineWidth=3*s;ctx.beginPath();ctx.moveTo(W/2+16*s,0);ctx.lineTo(W/2+16*s,H);ctx.stroke();const m=currentMission();if(m.kind!=='stunt'&&m.steps[mission.step]){const [x,z]=m.steps[mission.step];ctx.fillStyle='#ffb04a';ctx.beginPath();ctx.arc(W/2+x*s,H/2-z*s,7,0,Math.PI*2);ctx.fill()}for(const mo of movers){const p=mo.e.getPosition();ctx.fillStyle=mo.e.name==='bus'?'#71a8ff':mo.e.name==='rickshaw'?'#60d2b0':'#c9c9c9';ctx.fillRect(W/2+p.x*s-2,H/2-p.z*s-2,4,4)}ctx.save();ctx.translate(W/2+bike.pos.x*s,H/2-bike.pos.z*s);ctx.rotate(bike.yaw);ctx.fillStyle='#ff7f26';ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(5,6);ctx.lineTo(-5,6);ctx.closePath();ctx.fill();ctx.restore()}
 function updateLabels(){const w=innerWidth,h=innerHeight;for(const l of labels){const d=Math.hypot(l.pos.x-bike.pos.x,l.pos.z-bike.pos.z),p=l.pos.clone();camera.camera.worldToScreen(p,p);const vis=d<16&&p.z>0&&p.x>=0&&p.x<=w&&p.y>=0&&p.y<=h;l.el.style.display=vis?'block':'none';if(vis){l.el.style.left=p.x+'px';l.el.style.top=p.y+'px'}}}
