@@ -78,7 +78,7 @@ const CONFIG = {
   },
   dayLength: 165,
   camera: [
-    {dist:6.55,height:2.38,look:1.85,fov:60},
+    {dist:5.72,height:2.12,look:1.95,fov:58},
     {dist:4.15,height:1.85,look:1.8,fov:64},
     {dist:0.62,height:1.47,look:4.6,fov:71}
   ]
@@ -235,11 +235,23 @@ function makeSign(title,sub,x,y,z,yaw,w=2.7,h=.84,bg='#e9e0c8',fg='#151515'){
   for(const mi of e.render.meshInstances)mi.material=m;world.addChild(e);return e;
 }
 function tintEntity(e,tint,max=3){if(!e)return e;let changed=0;for(const r of e.findComponents('render'))for(const mi of r.meshInstances){const old=mi.material;if(!old||!old.clone)continue;const nm=((old.name||'')+' '+(mi.node?.name||'')).toLowerCase();if(/glass|metal|steel|iron|roof|zinc|wood|timber|rubber|tire|tyre|cable|road|stone|shutter/.test(nm))continue;if(changed<max){const m=old.clone();if(m.diffuse){m.diffuse=tint.clone();m.update();mi.material=m;changed++}}}return e}
+function asphaltize(e){
+  if(!e)return e;
+  for(const r of e.findComponents('render'))for(const mi of r.meshInstances){
+    const old=mi.material;if(!old||!old.clone)continue;const m=old.clone();
+    if(m.diffuse)m.diffuse=new pc.Color(.115,.125,.13);
+    if(m.emissive)m.emissive=new pc.Color(0,0,0);
+    m.gloss=.055;m.metalness=0;m.useMetalness=false;
+    if('bumpiness' in m)m.bumpiness=.38;
+    m.update();mi.material=m;
+  }
+  return e;
+}
 function roadGrid(){
   // Avenida barrial: asfalto parchado de 5.4 m y aceras de 2.4 m, sin las líneas blancas del módulo japonés anterior.
   let i=0;
   for(let z=-44;z<=44;z+=4,i++){
-    putScaled('road',0,z,0,1.35,1,1,-.13);
+    asphaltize(putScaled('road',0,z,0,1.35,1,1,-.13));
     const l=(i%5===1?'drain':'pavement'),r=(i%5===3?'drain':'pavement');
     put(l,-3.90,z,90,1,-.12);put(r,3.90,z,-90,1,-.12);
   }
@@ -350,6 +362,7 @@ function surfaceAt(x,z){for(let i=surfaceZones.length-1;i>=0;i--){const q=surfac
    ========================================================= */
 const bike={root:new pc.Entity('MotoPlayer'),visual:null,rider:null,wheels:[],frontNodes:[],pos:new pc.Vec3(0,.18,-12),yaw:0,speed:0,steer:0,lean:0,pitch:0,vy:0,y:.18,onGround:true,fallen:false,fallTimer:0,rpm:1200,susp:0,wheelAngle:0,slip:0,surface:'asphalt',cameraMode:0,headlight:true,color:0,exhaust:0,airtime:0,wheelieTime:0,lastSafe:new pc.Vec3(0,.18,-12),distance:0};actors.addChild(bike.root);
 const headLamp=new pc.Entity('FaroMoto');headLamp.addComponent('light',{type:'spot',color:new pc.Color(1,.91,.73),intensity:1.9,range:24,innerConeAngle:19,outerConeAngle:33,castShadows:false});headLamp.setLocalPosition(0,1.0,.45);headLamp.setLocalEulerAngles(-82,0,0);bike.root.addChild(headLamp);
+const bikeFill=new pc.Entity('BikeFill');bikeFill.addComponent('light',{type:'omni',color:new pc.Color(.78,.86,1),intensity:.22,range:4.8,castShadows:false});bikeFill.setLocalPosition(0,1.25,-.35);bike.root.addChild(bikeFill);
 function styleRider(e){
   if(!e)return;
   walk(e,n=>{const nm=(n.name||'').toLowerCase();if(/hard.?hat|safety.?helmet/.test(nm))n.enabled=false});
