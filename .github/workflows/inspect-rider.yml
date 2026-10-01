@@ -1,4 +1,4 @@
-name: Inspect Rider Rig
+name: Inspect Assets
 on:
   push:
     branches: [main]
@@ -8,31 +8,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Download rigged CC0 rider candidate
-        run: curl -L --fail --retry 3 -o /tmp/rider.glb https://cdn.3dassets.dev/assets/32901/v1/model.glb
-      - name: Print GLB skeleton
+      - name: Download candidates
+        run: |
+          curl -L --fail -o /tmp/road.glb https://cdn.3dassets.dev/assets/36523/v1/model.glb
+          curl -L --fail -o /tmp/mannequin.glb https://cdn.3dassets.dev/assets/25270/v1/model.glb
+      - name: Inspect GLBs
         run: |
           python3 - <<'PY'
-          import struct,json
-          p='/tmp/rider.glb'
-          b=open(p,'rb').read()
-          magic,ver,total=struct.unpack_from('<III',b,0)
-          off=12; js=None
-          while off<total:
-              ln,typ=struct.unpack_from('<II',b,off); off+=8
-              chunk=b[off:off+ln]; off+=ln
-              if typ==0x4E4F534A:
-                  js=json.loads(chunk.decode('utf-8').rstrip('\x00 \t\r\n'));break
-          print('GLB',magic,ver,total)
-          print('SCENES',js.get('scenes'))
-          print('SKINS',len(js.get('skins',[])),'ANIMS',[a.get('name') for a in js.get('animations',[])])
-          joints=set()
-          for s in js.get('skins',[]): joints.update(s.get('joints',[]))
-          for i,n in enumerate(js.get('nodes',[])):
-              if i in joints or any(k in (n.get('name') or '').lower() for k in ['hip','pelv','spine','thigh','leg','knee','foot','arm','should','hand','head','neck']):
-                  print(i, n.get('name'), 'joint' if i in joints else '', 'T', n.get('translation'), 'R', n.get('rotation'), 'S', n.get('scale'), 'children', n.get('children'), 'mesh', n.get('mesh'), 'skin', n.get('skin'))
-          print('MESH_NODES')
-          for i,n in enumerate(js.get('nodes',[])):
-              if n.get('mesh') is not None: print(i,n.get('name'),'mesh',n.get('mesh'),'skin',n.get('skin'))
-          print('MATERIALS',[m.get('name') for m in js.get('materials',[])])
+          import struct,json,os
+          def read(path):
+              b=open(path,'rb').read(); magic,ver,total=struct.unpack_from('<III',b,0); off=12; js=None
+              while off<total:
+                  ln,typ=struct.unpack_from('<II',b,off); off+=8; chunk=b[off:off+ln]; off+=ln
+                  if typ==0x4E4F534A:
+                      js=json.loads(chunk.decode('utf-8').rstrip('\x00 \t\r\n')); break
+              print('\n===',os.path.basename(path),'size',len(b),'===')
+              print('MATERIALS')
+              for i,m in enumerate(js.get('materials',[])):
+                  p=m.get('pbrMetallicRoughness',{})
+                  print(i,m.get('name'),'base',p.get('baseColorFactor'),'metal',p.get('metallicFactor'),'rough',p.get('roughnessFactor'),'emissive',m.get('emissiveFactor'),'alpha',m.get('alphaMode'))
+              print('NODES')
+              for i,n in enumerate(js.get('nodes',[])):
+                  if n.get('mesh') is not None or n.get('name'):
+                      print(i,n.get('name'),'mesh',n.get('mesh'),'T',n.get('translation'),'R',n.get('rotation'),'S',n.get('scale'))
+              print('MESHES')
+              for i,m in enumerate(js.get('meshes',[])):
+                  mats=[p.get('material') for p in m.get('primitives',[])]
+                  print(i,m.get('name'),'materials',mats)
+          read('/tmp/road.glb');read('/tmp/mannequin.glb')
           PY
