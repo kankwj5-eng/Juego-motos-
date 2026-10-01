@@ -539,10 +539,13 @@ app.on('update',dt=>{if(!started)return;if(!paused){physics(dt);updateMovers(dt)
    BOOT / PRUEBA AUTOMÁTICA
    ========================================================= */
 async function boot(){
-  const all=[...REQUIRED,...OPTIONAL];let failures=[];const environmentPromise=loadEnvironment();
-  await Promise.all(all.map(async n=>{try{await loadContainer(n)}catch(e){failures.push(n);console.warn('Asset opcional/no disponible:',n,e)}}));
+  let failures=[];const environmentPromise=loadEnvironment();
+  // Prioriza lo jugable: los assets esenciales tienen la vía rápida; los decorativos no pueden bloquear indefinidamente el arranque.
+  await Promise.all(REQUIRED.map(async n=>{try{await loadContainer(n)}catch(e){failures.push(n);console.warn('Asset esencial no disponible:',n,e)}}));
+  if(failures.length){$('#loadtext').textContent='Faltan recursos esenciales: '+failures.join(', ');return}
+  const optionalLoads=Promise.allSettled(OPTIONAL.map(async n=>{try{return await loadContainer(n)}catch(e){console.warn('Asset opcional/no disponible:',n,e);return null}}));
+  await Promise.race([optionalLoads,new Promise(r=>setTimeout(r,12000))]);
   await environmentPromise;
-  if(failures.some(n=>REQUIRED.includes(n))){$('#loadtext').textContent='Faltan recursos esenciales: '+failures.filter(n=>REQUIRED.includes(n)).join(', ');return}
   ground();roadGrid();buildings();setupBike();setupNPCs();if(cache.has('volcano'))scenery();
   bike.root.setPosition(bike.pos);camera.setPosition(0,3.0,-19);camera.lookAt(0,1,-7);startMission();$('#loadfill').style.width='100%';$('#loadtext').textContent='Barrio listo';$('#startBtn').disabled=false;
   if(SELFTEST){startGame(true);runSelfTest()}else if(PREVIEW){startGame(true);paused=true;updateDay(0);updateCamera(.5);updateHUD()}
