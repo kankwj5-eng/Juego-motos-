@@ -30,5 +30,9 @@ jobs:
           for s in js.get('skins',[]): joints.update(s.get('joints',[]))
           for i,n in enumerate(js.get('nodes',[])):
               if i in joints or any(k in (n.get('name') or '').lower() for k in ['hip','pelv','spine','thigh','leg','knee','foot','arm','should','hand','head','neck']):
-                  print(i, n.get('name'), 'joint' if i in joints else '', 'children', n.get('children'), 'mesh', n.get('mesh'), 'skin', n.get('skin'))
+                  print(i, n.get('name'), 'joint' if i in joints else '', 'T', n.get('translation'), 'R', n.get('rotation'), 'S', n.get('scale'), 'children', n.get('children'), 'mesh', n.get('mesh'), 'skin', n.get('skin'))
+          print('MESH_NODES')
+          for i,n in enumerate(js.get('nodes',[])):
+              if n.get('mesh') is not None: print(i,n.get('name'),'mesh',n.get('mesh'),'skin',n.get('skin'))
+          print('MATERIALS',[m.get('name') for m in js.get('materials',[])])
           PY
