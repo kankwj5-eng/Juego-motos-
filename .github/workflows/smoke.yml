@@ -1,0 +1,26 @@
+name: Browser smoke test
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [index.html, .github/workflows/smoke.yml]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start local server
+        run: |
+          python3 -m http.server 8000 >/tmp/server.log 2>&1 &
+          sleep 2
+      - name: Run game self-test in Chrome
+        run: |
+          set -o pipefail
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --virtual-time-budget=90000 --dump-dom 'http://127.0.0.1:8000/?selftest=1' >/tmp/dom.txt 2>/tmp/chrome.log || true
+          echo '--- Chrome log (tail) ---'
+          tail -n 80 /tmp/chrome.log || true
+          echo '--- Selftest ---'
+          grep -A30 'SELFTEST:' /tmp/dom.txt || true
+          grep -q 'SELFTEST:PASS' /tmp/dom.txt
