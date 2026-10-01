@@ -1,4 +1,4 @@
-name: Inspect Assets
+name: Inspect Rider Candidate
 on:
   push:
     branches: [main]
@@ -11,7 +11,7 @@ jobs:
       - name: Download candidates
         run: |
           curl -L --fail -o /tmp/road.glb https://cdn.3dassets.dev/assets/36523/v1/model.glb
-          curl -L --fail -o /tmp/mannequin.glb https://cdn.3dassets.dev/assets/25270/v1/model.glb
+          curl -L --fail -o /tmp/mannequin.glb https://cdn.3dassets.dev/assets/27863/v1/model.glb
       - name: Inspect GLBs
         run: |
           python3 - <<'PY'
