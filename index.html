@@ -367,7 +367,6 @@ function setupBike(){
   walk(bike.visual,n=>{const nm=(n.name||'').toLowerCase();if(/side.?stand|kick.?stand/.test(nm))n.enabled=false;if(nm.includes('wheel')){const b=n.getLocalEulerAngles().clone();bike.wheels.push({n,b})}if(nm.includes('front')||nm.includes('handle')||nm.includes('steer')){const b=n.getLocalEulerAngles().clone();bike.frontNodes.push({n,b})}});
   headLamp.setLocalPosition(0,.88,.77);setBikeColor(0)
 }
-function setBikeColor
 function setBikeColor(i){bike.color=i;const colors=[new pc.Color(.05,.45,.58),new pc.Color(.82,.12,.08),new pc.Color(.95,.57,.04),new pc.Color(.035,.035,.04),new pc.Color(.82,.82,.77)];if(!bike.visual)return;const tint=colors[i]||colors[0];let changed=0;for(const r of bike.visual.findComponents('render'))for(const mi of r.meshInstances){const old=mi.material;if(!old||!old.clone)continue;const name=((old.name||'')+' '+(mi.node?.name||'')).toLowerCase();if(/tire|tyre|rubber|glass|chrome|metal|wheel|rim|seat/.test(name))continue;if(changed<4){const m=old.clone();if(m.diffuse){m.diffuse=tint.clone();m.update();mi.material=m;changed++}}}toast(['Turquesa','Rojo','Amarillo','Negro','Blanco'][i]+' aplicado')}
 function physics(dt){
   if(paused||!started)return;
