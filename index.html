@@ -488,7 +488,11 @@ function setupBike(){
   bike.rider=instance('rider',bike.root,{p:[0,.04,-.16],r:[0,0,0],s:[.70,.80,.80],name:'Piloto'});styleRider(bike.rider);
   if(cache.has('helmet'))bike.helmet=instance('helmet',bike.root,{p:[0,1.04,-.08],r:[-10,180,0],s:[.61,.61,.61],name:'CascoPiloto'});
   bike.wheels.length=0;bike.frontNodes.length=0;
-  walk(bike.visual,n=>{const nm=(n.name||'').toLowerCase();if(/side.?stand|kick.?stand/.test(nm))n.enabled=false;if(nm.includes('wheel')){const b=n.getLocalEulerAngles().clone();bike.wheels.push({n,b})}if(nm.includes('front')||nm.includes('handle')||nm.includes('steer')){const b=n.getLocalEulerAngles().clone();bike.frontNodes.push({n,b})}});
+  walk(bike.visual,n=>{
+    const nm=(n.name||'').toLowerCase();if(/side.?stand|kick.?stand/.test(nm))n.enabled=false;
+    if(nm==='wheel-front'||nm==='wheel-rear'){const b=n.getLocalEulerAngles().clone();bike.wheels.push({n,b,front:nm==='wheel-front'})}
+    if(nm==='handlebar'){const b=n.getLocalEulerAngles().clone();bike.frontNodes.push({n,b})}
+  });
   headLamp.setLocalPosition(0,.91,.92);
   const headNode=bike.visual.findByName?.('naked-streetfighter_14'),tailNode=bike.visual.findByName?.('naked-streetfighter_15');
   if(headNode){const r=headNode.findComponent?.('render')||headNode.render;if(r?.meshInstances?.[0]){bike.headMat=r.meshInstances[0].material.clone();r.meshInstances[0].material=bike.headMat}}
@@ -556,7 +560,11 @@ function collideBike(){const r=.62;for(const c of colliders){const dx=bike.pos.x
 function fallBike(reason){if(bike.fallen)return;bike.fallen=true;bike.fallTimer=1.75;$('#damage').classList.add('fallen');toast(reason);audio.impact(.8)}
 function resetBike(){bike.fallen=false;$('#damage').classList.remove('fallen');bike.pos.copy(bike.lastSafe);bike.y=.18;bike.vy=0;bike.speed=0;bike.pitch=0;bike.lean=0;bike.slip=0;bike.brakeDive=0;bike.gear=1;bike.shiftTimer=0;applyBikeTransform()}
 function applyBikeTransform(){bike.root.setPosition(bike.pos.x,bike.y,bike.pos.z);bike.root.setEulerAngles(deg(bike.pitch+bike.brakeDive),deg(bike.yaw),deg(bike.lean));if(bike.rider){bike.rider.setLocalEulerAngles(-9-deg(bike.pitch)*.04-deg(bike.brakeDive)*.22,deg(bike.steer)*.06,0);bike.rider.setLocalPosition(0,.035-bike.susp*.04,-.11)}}
-function animateWheels(){for(const w of bike.wheels)w.n.setLocalEulerAngles(w.b.x+bike.wheelAngle,w.b.y,w.b.z);for(const f of bike.frontNodes)f.n.setLocalEulerAngles(f.b.x,f.b.y+deg(bike.steer)*.55,f.b.z)}
+function animateWheels(){
+  const steerDeg=deg(bike.steer)*.78;
+  for(const w of bike.wheels)w.n.setLocalEulerAngles(w.b.x+bike.wheelAngle,w.b.y+(w.front?steerDeg:0),w.b.z);
+  for(const f of bike.frontNodes)f.n.setLocalEulerAngles(f.b.x,f.b.y+steerDeg,f.b.z)
+}
 
 /* =========================================================
    NPCs / TRÁFICO
@@ -708,7 +716,7 @@ $('#startBtn').addEventListener('click',()=>startGame(false));$('#resumeBtn').ad
 async function runSelfTest(){
   const results=[];const ok=(name,cond)=>results.push({name,ok:!!cond});
   try{
-    ok('motor',typeof pc!=='undefined'&&!!app);ok('cielo',environmentReady||!!camera.camera.clearColor);ok('material adoquín',world.findByName('pavedTile')!==null);ok('assets esenciales',REQUIRED.every(n=>cache.has(n)));ok('moto creada',!!bike.visual);ok('escala protagonista',bike.visual&&bike.visual.getLocalScale().x>1.05);ok('ruedas moto',bike.wheels.length>=2);ok('piloto cargado',!!bike.rider);ok('piloto ligero',!!bike.rider&&bike.rider.findComponents('render').length>0);const ex0=bike.exhaust;bike.exhaust=1;updateExhaustVisual();ok('escape visual',!bike.exhaustAccessory||bike.exhaustAccessory.enabled);bike.exhaust=ex0;updateExhaustVisual();ok('luces moto',!!bike.headMat&&!!bike.tailMat);ok('mundo',world.children.length>40);ok('luces de barrio',houseLights.length>=6);const daySave=dayT;dayT=.74;updateDay(0);ok('noche funcional',houseLights.some(h=>h.e.light.intensity>0)&&lamps.some(l=>l.light.intensity>0));dayT=daySave;updateDay(0);ok('taller detallado',!cache.has('garageBench')||world.findByName('garageBench')!==null);ok('NPCs',movers.length>=6);ok('reacción tráfico',movers.every(m=>!!m.kind));ok('misiones',missions.length===4);
+    ok('motor',typeof pc!=='undefined'&&!!app);ok('cielo',environmentReady||!!camera.camera.clearColor);ok('material adoquín',world.findByName('pavedTile')!==null);ok('assets esenciales',REQUIRED.every(n=>cache.has(n)));ok('moto creada',!!bike.visual);ok('escala protagonista',bike.visual&&bike.visual.getLocalScale().x>1.05);ok('ruedas moto',bike.wheels.length===2&&bike.wheels.some(w=>w.front)&&bike.frontNodes.length>=1);ok('piloto cargado',!!bike.rider);ok('piloto ligero',!!bike.rider&&bike.rider.findComponents('render').length>0);const ex0=bike.exhaust;bike.exhaust=1;updateExhaustVisual();ok('escape visual',!bike.exhaustAccessory||bike.exhaustAccessory.enabled);bike.exhaust=ex0;updateExhaustVisual();ok('luces moto',!!bike.headMat&&!!bike.tailMat);ok('mundo',world.children.length>40);ok('luces de barrio',houseLights.length>=6);const daySave=dayT;dayT=.74;updateDay(0);ok('noche funcional',houseLights.some(h=>h.e.light.intensity>0)&&lamps.some(l=>l.light.intensity>0));dayT=daySave;updateDay(0);ok('taller detallado',!cache.has('garageBench')||world.findByName('garageBench')!==null);ok('NPCs',movers.length>=6);ok('reacción tráfico',movers.every(m=>!!m.kind));ok('misiones',missions.length===4);
     const x0=bike.pos.x,z0=bike.pos.z;input.up=1;for(let i=0;i<150;i++)physics(1/60);ok('aceleración',bike.speed>5&&Math.hypot(bike.pos.x-x0,bike.pos.z-z0)>3);ok('caja automática',bike.gear>=2);
     const s1=bike.speed;input.up=0;input.brake=1;for(let i=0;i<45;i++)physics(1/60);input.brake=0;ok('frenado',Math.abs(bike.speed)<Math.abs(s1));ok('transferencia de peso',bike.brakeDive<-.002);
     input.up=1;input.right=1;for(let i=0;i<70;i++)physics(1/60);input.right=0;ok('inclinación',Math.abs(bike.lean)>.05);bike.speed=Math.max(bike.speed,7.2);bike.pitch=0;bike.wheelieTime=0;input.up=1;input.wheelie=1;for(let i=0;i<36;i++)physics(1/60);input.wheelie=0;ok('wheelie',bike.pitch>.10&&bike.wheelieTime>.10);input.up=0;
