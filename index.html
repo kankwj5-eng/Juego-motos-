@@ -158,7 +158,7 @@ const PAVER_URL={
   normal:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_nor_gl_1k.jpg',
   rough:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_rough_1k.jpg'
 };
-const QS = new URLSearchParams(location.search);const SELFTEST=QS.has('selftest'),PREVIEW=QS.has('preview');
+const QS = new URLSearchParams(location.search);const SELFTEST=QS.has('selftest'),PREVIEW=QS.has('preview'),NIGHT=QS.has('night');
 const errors = [];
 window.addEventListener('error',e=>errors.push(String(e.message||e.error)));
 window.addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));
@@ -670,7 +670,7 @@ async function boot(){
   await Promise.all([environmentPromise,paverPromise]);
   ground();roadGrid();buildings();setupBike();setupNPCs();if(cache.has('volcano'))scenery();
   bike.root.setPosition(bike.pos);camera.setPosition(0,3.0,-19);camera.lookAt(0,1,-7);startMission();$('#loadfill').style.width='100%';$('#loadtext').textContent='Barrio listo';$('#startBtn').disabled=false;
-  if(SELFTEST){startGame(true);runSelfTest()}else if(PREVIEW){startGame(true);paused=true;updateDay(0);updateCamera(.5);updateHUD()}
+  if(SELFTEST){startGame(true);runSelfTest()}else if(PREVIEW||NIGHT){startGame(true);paused=true;if(NIGHT)dayT=.74;updateDay(0);updateCamera(.5);updateHUD()}
 }
 function startGame(test=false){if(started)return;started=true;$('#start').style.display='none';$('#hud').style.display='block';if(!test){audio.init();audio.resume()}bike.surface=surfaceAt(bike.pos.x,bike.pos.z);applyBikeTransform();updateHUD();toast('WASD / joystick para salir')}
 $('#startBtn').addEventListener('click',()=>startGame(false));$('#resumeBtn').addEventListener('click',()=>togglePause(false));
