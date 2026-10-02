@@ -758,8 +758,13 @@ async function boot(){
   const optionalLoads=Promise.allSettled(OPTIONAL.map(async n=>{try{return await loadContainer(n)}catch(e){console.warn('Asset opcional/no disponible:',n,e);return null}}));
   await Promise.race([optionalLoads,new Promise(r=>setTimeout(r,12000))]);
   await Promise.all([environmentPromise,paverPromise]);
-  ground();roadGrid();buildings();setupBike();setupNPCs();if(cache.has('volcano'))scenery();
-  bike.root.setPosition(bike.pos);camera.setPosition(0,3.0,-19);camera.lookAt(0,1,-7);startMission();$('#loadfill').style.width='100%';$('#loadtext').textContent='Barrio listo';$('#startBtn').disabled=false;
+  try{
+    ground();roadGrid();buildings();setupBike();setupNPCs();if(cache.has('volcano'))scenery();
+    bike.root.setPosition(bike.pos);camera.setPosition(0,3.0,-19);camera.lookAt(0,1,-7);startMission();$('#loadfill').style.width='100%';$('#loadtext').textContent='Barrio listo';$('#startBtn').disabled=false;
+  }catch(e){
+    const msg=String(e&&e.stack||e);errors.push(msg);console.error('BOOT_SCENE_ERROR',e);$('#loadtext').textContent='Error construyendo escena: '+msg;
+    const pre=document.createElement('pre');pre.id='boot-error';pre.textContent='BOOTFAIL\n'+msg;document.body.appendChild(pre);document.title='BOOT FAIL';return
+  }
   if(SELFTEST){startGame(true);runSelfTest()}else if(PREVIEW||NIGHT||HERO){
     startGame(true);paused=true;if(NIGHT)dayT=.74;updateDay(0);applyBikeTransform();
     if(HERO){camera.setPosition(bike.pos.x-2.8,bike.y+1.55,bike.pos.z-3.25);camera.lookAt(bike.pos.x,bike.y+.73,bike.pos.z+.32)}
