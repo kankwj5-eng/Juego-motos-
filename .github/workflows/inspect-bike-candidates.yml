@@ -1,0 +1,35 @@
+name: Inspect Bike Candidates
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/inspect-bike-candidates.yml]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download
+        run: |
+          curl -L --fail -o /tmp/current.glb https://cdn.3dassets.dev/assets/15425/v1/model.glb
+          curl -L --fail -o /tmp/commuter.glb https://cdn.3dassets.dev/assets/32542/v1/model.glb
+          curl -L --fail -o /tmp/sport.glb https://cdn.3dassets.dev/assets/15424/v1/model.glb
+      - name: Inspect GLBs
+        run: |
+          python3 - <<'PY'
+          import struct,json,os
+          def read(path):
+              b=open(path,'rb').read();_,_,total=struct.unpack_from('<III',b,0);off=12;j=None
+              while off<total:
+                  ln,typ=struct.unpack_from('<II',b,off);off+=8;chunk=b[off:off+ln];off+=ln
+                  if typ==0x4E4F534A:j=json.loads(chunk.decode('utf-8').rstrip('\x00 \t\r\n'));break
+              print('\n===',os.path.basename(path),'bytes',len(b),'===')
+              print('MATERIALS')
+              for i,m in enumerate(j.get('materials',[])):
+                  p=m.get('pbrMetallicRoughness',{});print(i,m.get('name'),'base',p.get('baseColorFactor'),'metal',p.get('metallicFactor'),'rough',p.get('roughnessFactor'))
+              print('NODES')
+              for i,n in enumerate(j.get('nodes',[])):
+                  if n.get('mesh') is not None or n.get('name'):
+                      print(i,n.get('name'),'mesh',n.get('mesh'),'T',n.get('translation'),'S',n.get('scale'))
+              print('ANIM',[(a.get('name'),len(a.get('channels',[]))) for a in j.get('animations',[])])
+          for p in ['/tmp/current.glb','/tmp/commuter.glb','/tmp/sport.glb']:read(p)
+          PY
