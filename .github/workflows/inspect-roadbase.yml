@@ -1,0 +1,28 @@
+name: Inspect Road Base
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/inspect-roadbase.yml]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download
+        run: curl -L --fail -o /tmp/roadbase.glb https://cdn.3dassets.dev/assets/32543/v1/model.glb
+      - name: Inspect
+        run: |
+          python3 - <<'PY'
+          import struct,json
+          b=open('/tmp/roadbase.glb','rb').read();_,_,total=struct.unpack_from('<III',b,0);off=12;j=None
+          while off<total:
+              ln,typ=struct.unpack_from('<II',b,off);off+=8;chunk=b[off:off+ln];off+=ln
+              if typ==0x4E4F534A:j=json.loads(chunk.decode('utf-8').rstrip('\x00 \t\r\n'));break
+          print('MATERIALS')
+          for i,m in enumerate(j.get('materials',[])):
+              p=m.get('pbrMetallicRoughness',{});print(i,m.get('name'),'base',p.get('baseColorFactor'),'tex',p.get('baseColorTexture'))
+          print('NODES')
+          for i,n in enumerate(j.get('nodes',[])):print(i,n.get('name'),'mesh',n.get('mesh'),'T',n.get('translation'),'S',n.get('scale'))
+          print('MESHES')
+          for i,m in enumerate(j.get('meshes',[])):print(i,m.get('name'),[p.get('material') for p in m.get('primitives',[])])
+          PY
