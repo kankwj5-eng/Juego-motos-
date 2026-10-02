@@ -522,7 +522,7 @@ function animateWheels(){for(const w of bike.wheels)w.n.setLocalEulerAngles(w.b.
    NPCs / TRÁFICO
    ========================================================= */
 const movers=[];
-function mover(name,path,speed,scale=1,y=0,yawOffset=0){const e=instance(name,actors,{p:[path[0][0],y,path[0][1]],s:[scale,scale,scale]});if(!e)return null;const m={e,path,speed,i:1,t:0,y,yawOffset,horned:0};movers.push(m);return m}
+function mover(name,path,speed,scale=1,y=0,yawOffset=0){const e=instance(name,actors,{p:[path[0][0],y,path[0][1]],s:[scale,scale,scale]});if(!e)return null;const m={e,kind:name,path,speed,i:1,t:0,y,yawOffset,horned:0};movers.push(m);return m}
 function setupNPCs(){
   // Tránsito ligero en carriles estrechos: aparece desde la primera cuadra y no nace fuera de cámara.
   mover('bus',[[1.05,16],[1.05,40],[-1.05,40],[-1.05,-39],[1.05,-39],[1.05,16]],3.65,.70,0,0);
@@ -540,20 +540,55 @@ function setupNPCs(){
   mover('person',[[-31,22],[-24,22],[-24,34],[-31,34]],.70,.62,0,0);
   mover('person',[[-29,26],[-26,26],[-26,31],[-29,31]],.66,.56,0,0);
 }
-function updateMovers(dt){for(const m of movers){const target=m.path[m.i],p=m.e.getPosition();let dx=target[0]-p.x,dz=target[1]-p.z,d=Math.hypot(dx,dz);if(d<.35){m.i=(m.i+1)%m.path.length;continue}dx/=d;dz/=d;let sp=m.speed;if(m.horned>0){sp*=1.55;m.horned-=dt}m.e.setPosition(p.x+dx*sp*dt,m.y,p.z+dz*sp*dt);m.e.setEulerAngles(0,deg(Math.atan2(dx,dz))+m.yawOffset,0);if(Math.hypot(p.x-bike.pos.x,p.z-bike.pos.z)<1.1&&Math.abs(bike.speed)>4){bike.speed*=-.1;cameraShake=Math.max(cameraShake,.18);audio.impact(.65)}}}
+function updateMovers(dt){
+  for(const m of movers){
+    const target=m.path[m.i],p=m.e.getPosition();let dx=target[0]-p.x,dz=target[1]-p.z,d=Math.hypot(dx,dz);
+    if(d<.35){m.i=(m.i+1)%m.path.length;continue}dx/=d;dz/=d;
+    const bx=p.x-bike.pos.x,bz=p.z-bike.pos.z,db=Math.hypot(bx,bz);
+    const vulnerable=/person|dog|chicken/.test(m.kind),vehicle=/bus|rickshaw|trafficBike|bicycle/.test(m.kind);
+    let sp=m.speed;
+    if(vehicle&&db<4.3)sp*=.48;
+    if(m.horned>0){
+      m.horned-=dt;
+      if(vulnerable&&db<8){const inv=1/Math.max(db,.2),awayX=bx*inv,awayZ=bz*inv;dx=dx*.45+awayX*.92;dz=dz*.45+awayZ*.92;const ln=Math.hypot(dx,dz)||1;dx/=ln;dz/=ln;sp*=1.35}
+      else sp*=1.12;
+    }
+    m.e.setPosition(p.x+dx*sp*dt,m.y,p.z+dz*sp*dt);m.e.setEulerAngles(0,deg(Math.atan2(dx,dz))+m.yawOffset,0);
+    const hitR=m.kind==='bus'?1.45:m.kind==='rickshaw'?1.15:vulnerable?.72:1.0;
+    if(db<hitR&&Math.abs(bike.speed)>4){if(Math.abs(bike.speed)>10&&vehicle)fallBike('Choque con tráfico');bike.speed*=-.08;cameraShake=Math.max(cameraShake,.20);audio.impact(.72)}
+  }
+}
 function reactHorn(){for(const m of movers){const p=m.e.getPosition();if(Math.hypot(p.x-bike.pos.x,p.z-bike.pos.z)<10)m.horned=1.6}}
 
 /* =========================================================
    AUDIO (WebAudio, sintetizado en tiempo real)
    ========================================================= */
-const audio={ctx:null,master:null,engineGain:null,o1:null,o2:null,noise:null,noiseGain:null,exhaust:0,musicTimer:0,
-  init(){if(this.ctx)return;const AC=window.AudioContext||window.webkitAudioContext;this.ctx=new AC();this.master=this.ctx.createGain();this.master.gain.value=.34;this.master.connect(this.ctx.destination);this.engineGain=this.ctx.createGain();this.engineGain.gain.value=.001;this.engineGain.connect(this.master);this.o1=this.ctx.createOscillator();this.o2=this.ctx.createOscillator();this.o1.type='sawtooth';this.o2.type='square';this.o1.frequency.value=45;this.o2.frequency.value=90;const g1=this.ctx.createGain(),g2=this.ctx.createGain();g1.gain.value=.34;g2.gain.value=.08;this.o1.connect(g1);this.o2.connect(g2);g1.connect(this.engineGain);g2.connect(this.engineGain);this.o1.start();this.o2.start();const buf=this.ctx.createBuffer(1,this.ctx.sampleRate*2,this.ctx.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;this.noise=this.ctx.createBufferSource();this.noise.buffer=buf;this.noise.loop=true;this.noiseGain=this.ctx.createGain();this.noiseGain.gain.value=0;this.noise.connect(this.noiseGain);this.noiseGain.connect(this.master);this.noise.start();this.scheduleMusic()},
+const audio={ctx:null,master:null,compressor:null,engineGain:null,engineFilter:null,o1:null,o2:null,o3:null,noise:null,noiseGain:null,noiseFilter:null,exhaust:0,musicTimer:0,
+  init(){
+    if(this.ctx)return;const AC=window.AudioContext||window.webkitAudioContext;this.ctx=new AC();
+    this.master=this.ctx.createGain();this.master.gain.value=.31;
+    this.compressor=this.ctx.createDynamicsCompressor();this.compressor.threshold.value=-18;this.compressor.knee.value=16;this.compressor.ratio.value=4;this.compressor.attack.value=.004;this.compressor.release.value=.18;
+    this.master.connect(this.compressor);this.compressor.connect(this.ctx.destination);
+    this.engineGain=this.ctx.createGain();this.engineGain.gain.value=.001;this.engineFilter=this.ctx.createBiquadFilter();this.engineFilter.type='lowpass';this.engineFilter.frequency.value=1100;this.engineFilter.Q.value=.8;this.engineFilter.connect(this.engineGain);this.engineGain.connect(this.master);
+    this.o1=this.ctx.createOscillator();this.o2=this.ctx.createOscillator();this.o3=this.ctx.createOscillator();this.o1.type='sawtooth';this.o2.type='square';this.o3.type='triangle';
+    const g1=this.ctx.createGain(),g2=this.ctx.createGain(),g3=this.ctx.createGain();g1.gain.value=.24;g2.gain.value=.055;g3.gain.value=.14;
+    this.o1.connect(g1);this.o2.connect(g2);this.o3.connect(g3);g1.connect(this.engineFilter);g2.connect(this.engineFilter);g3.connect(this.engineFilter);this.o1.start();this.o2.start();this.o3.start();
+    const buf=this.ctx.createBuffer(1,this.ctx.sampleRate*2,this.ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    this.noise=this.ctx.createBufferSource();this.noise.buffer=buf;this.noise.loop=true;this.noiseGain=this.ctx.createGain();this.noiseGain.gain.value=0;this.noiseFilter=this.ctx.createBiquadFilter();this.noiseFilter.type='bandpass';this.noiseFilter.frequency.value=820;this.noiseFilter.Q.value=.65;this.noise.connect(this.noiseFilter);this.noiseFilter.connect(this.noiseGain);this.noiseGain.connect(this.master);this.noise.start();this.scheduleMusic()
+  },
   resume(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume()},
-  update(dt,thr,rpm,slip,grip){if(!this.ctx)return;const t=this.ctx.currentTime,ex=[1,1.13,1.28][bike.exhaust]||1;this.o1.frequency.setTargetAtTime((38+rpm/78)*ex,t,.05);this.o2.frequency.setTargetAtTime((76+rpm/39)*ex,t,.06);this.engineGain.gain.setTargetAtTime(.055+.075*Math.abs(thr)+.035*bike.exhaust,t,.06);this.noiseGain.gain.setTargetAtTime(clamp(slip*(1.2-grip)*.32,0,.13),t,.06)},
+  update(dt,thr,rpm,slip,grip){
+    if(!this.ctx)return;const t=this.ctx.currentTime,ex=[1,1.10,1.22][bike.exhaust]||1,fire=clamp(rpm/60/2,10,75);
+    this.o1.frequency.setTargetAtTime(fire*2.02*ex,t,.045);this.o2.frequency.setTargetAtTime(fire*4.04*ex,t,.05);this.o3.frequency.setTargetAtTime(fire*.99*ex,t,.06);
+    this.engineFilter.frequency.setTargetAtTime(520+rpm*.19+Math.abs(thr)*520,t,.055);
+    this.engineGain.gain.setTargetAtTime(.045+.070*Math.abs(thr)+.025*bike.exhaust,t,.055);
+    const surf=CONFIG.surfaces[bike.surface],roadRumble=clamp(Math.abs(bike.speed)/18*surf.bump*2.6,0,.07),skid=clamp(slip*(1.18-grip)*.30,0,.14);
+    this.noiseFilter.frequency.setTargetAtTime(540+Math.abs(bike.speed)*38,t,.08);this.noiseGain.gain.setTargetAtTime(roadRumble+skid,t,.06)
+  },
   horn(){if(!this.ctx)return;this.resume();const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type='square';o.frequency.setValueAtTime(390,this.ctx.currentTime);o.frequency.exponentialRampToValueAtTime(330,this.ctx.currentTime+.24);g.gain.setValueAtTime(.0001,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.16,this.ctx.currentTime+.015);g.gain.exponentialRampToValueAtTime(.0001,this.ctx.currentTime+.28);o.connect(g);g.connect(this.master);o.start();o.stop(this.ctx.currentTime+.3);reactHorn()},
   impact(k=.5){if(!this.ctx)return;const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type='sine';o.frequency.setValueAtTime(105,this.ctx.currentTime);o.frequency.exponentialRampToValueAtTime(42,this.ctx.currentTime+.16);g.gain.setValueAtTime(.18*k+.02,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.0001,this.ctx.currentTime+.2);o.connect(g);g.connect(this.master);o.start();o.stop(this.ctx.currentTime+.22)},
   chirp(freq=660,when=0,gain=.035,dur=.18,type='triangle'){if(!this.ctx)return;const t=this.ctx.currentTime+when,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(gain,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(this.master);o.start(t);o.stop(t+dur+.02)},
-  scheduleMusic(){if(!this.ctx)return;const seq=[523,659,784,659,587,698,880,698,493,659,784,659];for(let i=0;i<seq.length;i++){this.chirp(seq[i],i*.34,.018,.22,'triangle');if(i%3===0)this.chirp(seq[i]/2,i*.34,.012,.3,'sine')}setTimeout(()=>{if(this.ctx)this.scheduleMusic()},seq.length*340+900)},
+  scheduleMusic(){if(!this.ctx)return;const seq=[523,659,784,659,587,698,880,698,493,659,784,659];for(let i=0;i<seq.length;i++){this.chirp(seq[i],i*.34,.012,.20,'triangle');if(i%3===0)this.chirp(seq[i]/2,i*.34,.008,.28,'sine')}setTimeout(()=>{if(this.ctx)this.scheduleMusic()},seq.length*340+1200)},
   crickets(level){if(!this.ctx)return;if(level>.55&&Math.random()<.008)this.chirp(3500+Math.random()*1100,0,.008,.06,'sine')}
 };
 
@@ -621,7 +656,7 @@ $('#startBtn').addEventListener('click',()=>startGame(false));$('#resumeBtn').ad
 async function runSelfTest(){
   const results=[];const ok=(name,cond)=>results.push({name,ok:!!cond});
   try{
-    ok('motor',typeof pc!=='undefined'&&!!app);ok('cielo',environmentReady||!!camera.camera.clearColor);ok('adoquín PBR',paverReady&&!!paverMaterial);ok('assets esenciales',REQUIRED.every(n=>cache.has(n)));ok('moto creada',!!bike.visual);ok('escala protagonista',bike.visual&&bike.visual.getLocalScale().x>1.05);ok('ruedas moto',bike.wheels.length>=2);ok('piloto cargado',!!bike.rider);ok('piloto ligero',!!bike.rider&&bike.rider.findComponents('render').length>0);ok('mundo',world.children.length>40);ok('taller detallado',!cache.has('garageBench')||world.findByName('garageBench')!==null);ok('NPCs',movers.length>=6);ok('misiones',missions.length===4);
+    ok('motor',typeof pc!=='undefined'&&!!app);ok('cielo',environmentReady||!!camera.camera.clearColor);ok('adoquín PBR',paverReady&&!!paverMaterial);ok('assets esenciales',REQUIRED.every(n=>cache.has(n)));ok('moto creada',!!bike.visual);ok('escala protagonista',bike.visual&&bike.visual.getLocalScale().x>1.05);ok('ruedas moto',bike.wheels.length>=2);ok('piloto cargado',!!bike.rider);ok('piloto ligero',!!bike.rider&&bike.rider.findComponents('render').length>0);ok('mundo',world.children.length>40);ok('taller detallado',!cache.has('garageBench')||world.findByName('garageBench')!==null);ok('NPCs',movers.length>=6);ok('reacción tráfico',movers.every(m=>!!m.kind));ok('misiones',missions.length===4);
     const x0=bike.pos.x,z0=bike.pos.z;input.up=1;for(let i=0;i<150;i++)physics(1/60);ok('aceleración',bike.speed>5&&Math.hypot(bike.pos.x-x0,bike.pos.z-z0)>3);
     const s1=bike.speed;input.up=0;input.brake=1;for(let i=0;i<45;i++)physics(1/60);input.brake=0;ok('frenado',Math.abs(bike.speed)<Math.abs(s1));ok('transferencia de peso',bike.brakeDive<-.002);
     input.up=1;input.right=1;for(let i=0;i<70;i++)physics(1/60);input.right=0;ok('inclinación',Math.abs(bike.lean)>.05);bike.speed=Math.max(bike.speed,7.2);bike.pitch=0;bike.wheelieTime=0;input.up=1;input.wheelie=1;for(let i=0;i<36;i++)physics(1/60);input.wheelie=0;ok('wheelie',bike.pitch>.10&&bike.wheelieTime>.10);input.up=0;
