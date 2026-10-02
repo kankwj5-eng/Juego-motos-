@@ -153,9 +153,14 @@ const ASSET = {
   partsShelf:'https://cdn.3dassets.dev/assets/34027/v1/model.glb',
   exhaustSilencer:'https://cdn.3dassets.dev/assets/26642/v1/model.glb'
 };
-const REQUIRED = ['road','pavement','drain','cobble','compactPaver','dirt','yardGrit','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','facadeConcrete','facadeDoor','facadeShutter','facadeWindow','facadeShop','workshopShed','compactHouse','shopOpen','stall','utility','cable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
+const REQUIRED = ['road','pavement','drain','cobble','dirt','yardGrit','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','facadeConcrete','facadeDoor','facadeShutter','facadeWindow','facadeShop','workshopShed','compactHouse','shopOpen','stall','utility','cable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
 const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet','graffiti','cornerBuilding','waterTank','publicTap','streetBin','stoolBlue','stoolStack','pottedPlants','awningCrimson','shadeTree','garageBench','garageTyres','tyreChanger','partsShelf','exhaustSilencer'];
 const SKY_URL='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/qwantani_sunset_puresky_1k.hdr';
+const PAVER_URL={
+  diff:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/interlocking_concrete_pavers/interlocking_concrete_pavers_diff_1k.jpg',
+  normal:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/interlocking_concrete_pavers/interlocking_concrete_pavers_nor_gl_1k.jpg',
+  rough:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/interlocking_concrete_pavers/interlocking_concrete_pavers_rough_1k.jpg'
+};
 
 const QS = new URLSearchParams(location.search);const SELFTEST=QS.has('selftest'),PREVIEW=QS.has('preview'),NIGHT=QS.has('night');
 const errors = [];
@@ -217,6 +222,30 @@ const world=new pc.Entity('Barrio');app.root.addChild(world);
 const actors=new pc.Entity('Actores');app.root.addChild(actors);
 const cache=new Map();let loaded=0;
 let environmentReady=false,environmentCube=null;
+let paverReady=false,paverMaterial=null;
+function loadTextureUrl(url,name){
+  return new Promise(resolve=>{
+    try{app.assets.loadFromUrlAndFilename(url,name,'texture',(err,asset)=>{
+      if(err){console.warn('Textura no disponible:',name,err);resolve(null);return}
+      try{
+        const t=asset.resource;t.addressU=pc.ADDRESS_REPEAT;t.addressV=pc.ADDRESS_REPEAT;t.minFilter=pc.FILTER_LINEAR_MIPMAP_LINEAR;t.magFilter=pc.FILTER_LINEAR;
+        try{t.anisotropy=Math.min(8,app.graphicsDevice.maxAnisotropy||8)}catch{}
+        resolve(t)
+      }catch(e){console.warn('Textura inválida:',name,e);resolve(null)}
+    })}catch(e){console.warn('Textura no disponible:',name,e);resolve(null)}
+  })
+}
+async function loadPaverMaterial(){
+  const [diff,norm,rough]=await Promise.all([
+    loadTextureUrl(PAVER_URL.diff,'interlocking_pavers_diff_1k.jpg'),
+    loadTextureUrl(PAVER_URL.normal,'interlocking_pavers_nor_gl_1k.jpg'),
+    loadTextureUrl(PAVER_URL.rough,'interlocking_pavers_rough_1k.jpg')
+  ]);
+  if(!diff||!norm||!rough){paverReady=false;return false}
+  const m=new pc.StandardMaterial();m.name='AdoquinNicaraguaPBR';m.diffuseMap=diff;m.normalMap=norm;m.glossMap=rough;m.glossInvert=true;
+  m.diffuse=new pc.Color(.94,.93,.90);m.specular=new pc.Color(.04,.04,.038);m.metalness=0;m.useMetalness=false;m.gloss=.18;m.bumpiness=.66;m.useSkybox=false;
+  m.update();paverMaterial=m;paverReady=true;return true
+}
 function loadEnvironment(){
   return new Promise(resolve=>{
     try{
@@ -278,14 +307,12 @@ function weatherEntity(e,amount=.55){
     m.update();mi.material=m;
   }return e
 }
-function streetStoneStyle(e){
-  if(!e)return e;
+function paverRoadStyle(e,tu=3.05,tv=2.25){
+  if(!e)return e;e.name='AdoquinPBR';
+  walk(e,n=>{const nm=(n.name||'').toLowerCase();if(nm.includes('plaster')||nm.includes('stone'))n.enabled=false});
   for(const r of e.findComponents('render'))for(const mi of r.meshInstances){
-    const old=mi.material;if(!old||!old.clone)continue;const m=old.clone();
-    m.diffuseMap=null;m.normalMap=null;m.glossMap=null;m.emissiveMap=null;
-    m.diffuse=new pc.Color(.57,.565,.54);m.emissive=new pc.Color(0,0,0);
-    m.gloss=.035;m.metalness=0;m.useMetalness=false;m.useSkybox=false;m.specular=new pc.Color(.025,.025,.022);
-    m.update();mi.material=m
+    if(!paverMaterial){asphaltize(e);return e}
+    const m=paverMaterial.clone();m.diffuseMapTiling=new pc.Vec2(tu,tv);m.normalMapTiling=new pc.Vec2(tu,tv);m.glossMapTiling=new pc.Vec2(tu,tv);m.update();mi.material=m
   }return e
 }
 function neutralizeLampModel(e){
@@ -308,28 +335,22 @@ function asphaltize(e){
   return e;
 }
 function roadGrid(){
-  // Entrada asfaltada; núcleo residencial adoquinado con loseta CC0 de 2 m escalada 1.35.
+  // Entrada asfaltada; el núcleo usa módulos viales GLB con adoquín PBR CC0 a escala real.
   for(let z=-44;z<=-28;z+=4)asphaltize(putScaled('road',0,z,0,1.35,1,1,-.13));
-  let row=0;
-  for(let z=-25.9;z<=44;z+=2.70,row++){
-    streetStoneStyle(putScaled('compactPaver',-1.35,z,row%2?180:0,1.35,1,1.35,-.10));
-    streetStoneStyle(putScaled('compactPaver', 1.35,z,row%2?0:180,1.35,1,1.35,-.10));
-  }
+  for(let z=-24;z<=44;z+=4)paverRoadStyle(putScaled('road',0,z,0,1.35,1,1,-.13),3.05,2.25);
+
   let i=0;for(let z=-44;z<=44;z+=4,i++){
     const l=(i%5===1?'drain':'pavement'),r=(i%5===3?'drain':'pavement');
     weatherEntity(put(l,-3.90,z,90,1,-.12),.72);weatherEntity(put(r,3.90,z,-90,1,-.12),.72)
   }
-  // Dos calles laterales: la zona visible usa el mismo adoquín, con tramo corto para no disparar draw-calls.
   for(const zCross of [-18,20]){
-    let col=0;for(let x=-24.3;x<=24.3;x+=2.70,col++){
-      streetStoneStyle(putScaled('compactPaver',x,zCross,col%2?90:-90,1.35,1,1.35,-.10))
-    }
+    for(let x=-44;x<=44;x+=4)paverRoadStyle(putScaled('road',x,zCross,90,1.35,1,1,-.13),3.05,2.25)
   }
   for(let z=-42;z<=42;z+=3)put('dirt',16,z,(Math.round(z)%2)*4,1,-.01);
 
   surfaceZones.push({type:'asphalt',x:0,z:-36,hx:2.72,hz:9.0});
   surfaceZones.push({type:'cobble',x:0,z:10,hx:2.72,hz:36});
-  surfaceZones.push({type:'cobble',x:0,z:-18,hx:25,hz:2.25},{type:'cobble',x:0,z:20,hx:25,hz:2.25});
+  surfaceZones.push({type:'cobble',x:0,z:-18,hx:45,hz:2.25},{type:'cobble',x:0,z:20,hx:45,hz:2.25});
   surfaceZones.push({type:'dirt',x:16,z:0,hx:2.35,hz:45});
   surfaceZones.push({type:'sand',x:-28,z:31,hx:6.5,hz:5.5});
   surfaceZones.push({type:'puddle',x:-1.55,z:13,hx:1.1,hz:1.35},{type:'puddle',x:1.55,z:-31,hx:.9,hz:1.15},{type:'puddle',x:16,z:7,hx:1.5,hz:2.4});
@@ -679,9 +700,9 @@ function updateDay(dt){
   dayT=(dayT+dt/CONFIG.dayLength)%1;const a=dayT*Math.PI*2,sunWave=Math.sin(a),daylight=clamp(sunWave*.72+.45,.03,1),night=1-daylight;
   const sunset=clamp(1-Math.abs(dayT-.49)*15,0,1)+clamp(1-Math.abs(dayT-.01)*15,0,1);
   const sunAlt=8+57*daylight;sun.setEulerAngles(sunAlt,-58+dayT*92,-12);moon.setEulerAngles(18+42*night,122+dayT*56,12);
-  sun.light.intensity=.025+1.02*daylight;moon.light.intensity=Math.pow(night,1.35)*.28;skyFill.light.intensity=.035+.24*daylight+.07*night;
+  sun.light.intensity=.025+1.02*daylight;moon.light.intensity=Math.pow(night,1.35)*.28;skyFill.light.intensity=.045+.34*daylight+.08*night;
   if(environmentReady){app.scene.skyboxIntensity=.025+.34*daylight+.06*sunset;try{app.scene.skyboxRotation=new pc.Quat().setFromEulerAngles(0,105+dayT*18,0)}catch{}}
-  app.scene.ambientLight.set(.032+.15*daylight,.042+.17*daylight,.070+.20*daylight);
+  app.scene.ambientLight.set(.038+.18*daylight,.050+.20*daylight,.078+.23*daylight);
   const day=[.29,.52,.78],dusk=[.86,.40,.22],nite=[.012,.025,.065];let r=nite[0]+(day[0]-nite[0])*daylight,g=nite[1]+(day[1]-nite[1])*daylight,b=nite[2]+(day[2]-nite[2])*daylight;
   r+=(dusk[0]-r)*sunset*.62;g+=(dusk[1]-g)*sunset*.62;b+=(dusk[2]-b)*sunset*.62;camera.camera.clearColor.set(r,g,b);try{app.scene.fogColor.set(r*.88,g*.90,b*.94)}catch{}
   for(const l of lamps)l.light.intensity=night>.38?1.22*clamp((night-.38)/.45,0,1):0;
@@ -719,13 +740,13 @@ app.on('update',dt=>{if(!started)return;if(!paused){physics(dt);updateMovers(dt)
    BOOT / PRUEBA AUTOMÁTICA
    ========================================================= */
 async function boot(){
-  let failures=[];const environmentPromise=loadEnvironment();
+  let failures=[];const environmentPromise=loadEnvironment();const paverPromise=loadPaverMaterial();
   // Prioriza lo jugable: los assets esenciales tienen la vía rápida; los decorativos no pueden bloquear indefinidamente el arranque.
   await Promise.all(REQUIRED.map(async n=>{try{await loadContainer(n)}catch(e){failures.push(n);console.warn('Asset esencial no disponible:',n,e)}}));
   if(failures.length){$('#loadtext').textContent='Faltan recursos esenciales: '+failures.join(', ');return}
   const optionalLoads=Promise.allSettled(OPTIONAL.map(async n=>{try{return await loadContainer(n)}catch(e){console.warn('Asset opcional/no disponible:',n,e);return null}}));
   await Promise.race([optionalLoads,new Promise(r=>setTimeout(r,12000))]);
-  await environmentPromise;
+  await Promise.all([environmentPromise,paverPromise]);
   ground();roadGrid();buildings();setupBike();setupNPCs();if(cache.has('volcano'))scenery();
   bike.root.setPosition(bike.pos);camera.setPosition(0,3.0,-19);camera.lookAt(0,1,-7);startMission();$('#loadfill').style.width='100%';$('#loadtext').textContent='Barrio listo';$('#startBtn').disabled=false;
   if(SELFTEST){startGame(true);runSelfTest()}else if(PREVIEW||NIGHT){startGame(true);paused=true;if(NIGHT)dayT=.74;updateDay(0);updateCamera(.5);updateHUD()}
@@ -736,7 +757,7 @@ $('#startBtn').addEventListener('click',()=>startGame(false));$('#resumeBtn').ad
 async function runSelfTest(){
   const results=[];const ok=(name,cond)=>results.push({name,ok:!!cond});
   try{
-    ok('motor',typeof pc!=='undefined'&&!!app);ok('cielo',environmentReady||!!camera.camera.clearColor);ok('material adoquín',world.findByName('compactPaver')!==null);ok('assets esenciales',REQUIRED.every(n=>cache.has(n)));ok('moto creada',!!bike.visual);ok('escala protagonista',bike.visual&&bike.visual.getLocalScale().x>1.05);ok('ruedas moto',bike.wheels.length===2&&bike.wheels.some(w=>w.front)&&bike.frontNodes.length>=1);ok('piloto cargado',!!bike.rider);ok('piloto ligero',!!bike.rider&&bike.rider.findComponents('render').length>0);const ex0=bike.exhaust;bike.exhaust=1;updateExhaustVisual();ok('escape visual',!bike.exhaustAccessory||bike.exhaustAccessory.enabled);bike.exhaust=ex0;updateExhaustVisual();ok('luces moto',!!bike.headMat&&!!bike.tailMat);ok('mundo',world.children.length>40);ok('luces de barrio',houseLights.length>=6);const daySave=dayT;dayT=.74;updateDay(0);ok('noche funcional',houseLights.some(h=>h.e.light.intensity>0)&&lamps.some(l=>l.light.intensity>0));dayT=daySave;updateDay(0);ok('taller detallado',!cache.has('garageBench')||world.findByName('garageBench')!==null);ok('NPCs',movers.length>=6);ok('reacción tráfico',movers.every(m=>!!m.kind));ok('misiones',missions.length===4);const camProbe=resolveCameraXZ(8,-3,0,-3);ok('cámara colisión',camProbe[0]<7.8);
+    ok('motor',typeof pc!=='undefined'&&!!app);ok('cielo',environmentReady||!!camera.camera.clearColor);ok('material adoquín',paverReady&&!!paverMaterial&&world.findByName('AdoquinPBR')!==null);ok('assets esenciales',REQUIRED.every(n=>cache.has(n)));ok('moto creada',!!bike.visual);ok('escala protagonista',bike.visual&&bike.visual.getLocalScale().x>1.05);ok('ruedas moto',bike.wheels.length===2&&bike.wheels.some(w=>w.front)&&bike.frontNodes.length>=1);ok('piloto cargado',!!bike.rider);ok('piloto ligero',!!bike.rider&&bike.rider.findComponents('render').length>0);const ex0=bike.exhaust;bike.exhaust=1;updateExhaustVisual();ok('escape visual',!bike.exhaustAccessory||bike.exhaustAccessory.enabled);bike.exhaust=ex0;updateExhaustVisual();ok('luces moto',!!bike.headMat&&!!bike.tailMat);ok('mundo',world.children.length>40);ok('luces de barrio',houseLights.length>=6);const daySave=dayT;dayT=.74;updateDay(0);ok('noche funcional',houseLights.some(h=>h.e.light.intensity>0)&&lamps.some(l=>l.light.intensity>0));dayT=daySave;updateDay(0);ok('taller detallado',!cache.has('garageBench')||world.findByName('garageBench')!==null);ok('NPCs',movers.length>=6);ok('reacción tráfico',movers.every(m=>!!m.kind));ok('misiones',missions.length===4);const camProbe=resolveCameraXZ(8,-3,0,-3);ok('cámara colisión',camProbe[0]<7.8);
     const moneyProbe=money,ownedProbe=ownedColors[1];if(!ownedColors[1]){money=200;setBikeColor(1);ok('economía taller',ownedColors[1]&&money===120);ownedColors[1]=ownedProbe;money=moneyProbe;setBikeColor(0,true)}else ok('economía taller',true);
     const x0=bike.pos.x,z0=bike.pos.z;input.up=1;for(let i=0;i<150;i++)physics(1/60);ok('aceleración',bike.speed>5&&Math.hypot(bike.pos.x-x0,bike.pos.z-z0)>3);ok('caja automática',bike.gear>=2);
     const s1=bike.speed;input.up=0;input.brake=1;for(let i=0;i<45;i++)physics(1/60);input.brake=0;ok('frenado',Math.abs(bike.speed)<Math.abs(s1));ok('transferencia de peso',bike.brakeDive<-.002);
