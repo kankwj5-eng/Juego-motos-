@@ -1,4 +1,4 @@
-name: Inspect Player Bike
+name: Inspect Paver Candidate
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Download candidates
         run: |
-          curl -L --fail -o /tmp/road.glb https://cdn.3dassets.dev/assets/15425/v1/model.glb
+          curl -L --fail -o /tmp/road.glb https://cdn.3dassets.dev/assets/79/v1/model.glb
           cp /tmp/road.glb /tmp/mannequin.glb
       - name: Inspect GLBs
         run: |
