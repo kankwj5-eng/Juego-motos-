@@ -78,8 +78,8 @@ const CONFIG = {
   },
   dayLength: 165,
   camera: [
-    {dist:5.72,height:2.12,look:1.95,fov:58},
-    {dist:4.15,height:1.85,look:1.8,fov:64},
+    {dist:4.55,height:1.88,look:2.20,fov:57},
+    {dist:3.55,height:1.62,look:2.05,fov:63},
     {dist:0.62,height:1.47,look:4.6,fov:71}
   ]
 };
@@ -92,9 +92,9 @@ const ASSET = {
   pavement:'https://cdn.3dassets.dev/assets/36522/v1/model.glb',
   drain:'https://cdn.3dassets.dev/assets/36521/v1/model.glb',
   streetSection:'https://cdn.3dassets.dev/assets/30065/v1/model.glb',
-  bike:'https://cdn.3dassets.dev/assets/32542/v1/model.glb',
+  bike:'https://cdn.3dassets.dev/assets/15425/v1/model.glb',
   commuterBike:'https://cdn.3dassets.dev/assets/36564/v1/model.glb',
-  trafficBike:'https://cdn.3dassets.dev/assets/15425/v1/model.glb',
+  trafficBike:'https://cdn.3dassets.dev/assets/15421/v1/model.glb',
   rickshaw:'https://cdn.3dassets.dev/assets/36560/v1/model.glb',
   bicycle:'https://cdn.3dassets.dev/assets/36561/v1/model.glb',
   facadeConcrete:'https://cdn.3dassets.dev/assets/28189/v1/model.glb',
@@ -448,7 +448,7 @@ function surfaceAt(x,z){for(let i=surfaceZones.length-1;i>=0;i--){const q=surfac
 /* =========================================================
    MOTO + FÍSICA
    ========================================================= */
-const bike={root:new pc.Entity('MotoPlayer'),visual:null,rider:null,wheels:[],frontNodes:[],pos:new pc.Vec3(0,.18,-12),yaw:0,speed:0,steer:0,lean:0,pitch:0,vy:0,y:.18,onGround:true,fallen:false,fallTimer:0,rpm:1200,susp:0,wheelAngle:0,slip:0,surface:'asphalt',cameraMode:0,headlight:true,color:0,exhaust:0,airtime:0,wheelieTime:0,lastSafe:new pc.Vec3(0,.18,-12),distance:0};actors.addChild(bike.root);
+const bike={root:new pc.Entity('MotoPlayer'),visual:null,rider:null,wheels:[],frontNodes:[],pos:new pc.Vec3(0,.18,-12),yaw:0,speed:0,steer:0,lean:0,pitch:0,vy:0,y:.18,onGround:true,fallen:false,fallTimer:0,rpm:1200,susp:0,wheelAngle:0,slip:0,surface:'asphalt',cameraMode:0,headlight:true,color:0,exhaust:0,airtime:0,wheelieTime:0,brakeDive:0,lastSafe:new pc.Vec3(0,.18,-12),distance:0};actors.addChild(bike.root);
 const headLamp=new pc.Entity('FaroMoto');headLamp.addComponent('light',{type:'spot',color:new pc.Color(1,.91,.73),intensity:1.9,range:24,innerConeAngle:19,outerConeAngle:33,castShadows:false});headLamp.setLocalPosition(0,1.0,.45);headLamp.setLocalEulerAngles(-82,0,0);bike.root.addChild(headLamp);
 
 function styleRider(e){
@@ -466,12 +466,12 @@ function styleRider(e){
   }
 }
 function setupBike(){
-  bike.visual=instance('bike',bike.root,{p:[0,-.20,0],r:[0,0,0],s:[1.10,1.10,1.10]});
-  bike.rider=instance('rider',bike.root,{p:[0,.01,-.19],r:[0,0,0],s:[.69,.80,.80],name:'Piloto'});styleRider(bike.rider);
-  if(cache.has('helmet'))bike.helmet=instance('helmet',bike.root,{p:[0,1.02,-.12],r:[-7,180,0],s:[.64,.64,.64],name:'CascoPiloto'});
+  bike.visual=instance('bike',bike.root,{p:[0,-.14,0],r:[0,0,0],s:[1.04,1.04,1.04]});
+  bike.rider=instance('rider',bike.root,{p:[0,.04,-.16],r:[0,0,0],s:[.70,.80,.80],name:'Piloto'});styleRider(bike.rider);
+  if(cache.has('helmet'))bike.helmet=instance('helmet',bike.root,{p:[0,1.08,-.10],r:[-7,180,0],s:[.64,.64,.64],name:'CascoPiloto'});
   bike.wheels.length=0;bike.frontNodes.length=0;
   walk(bike.visual,n=>{const nm=(n.name||'').toLowerCase();if(/side.?stand|kick.?stand/.test(nm))n.enabled=false;if(nm.includes('wheel')){const b=n.getLocalEulerAngles().clone();bike.wheels.push({n,b})}if(nm.includes('front')||nm.includes('handle')||nm.includes('steer')){const b=n.getLocalEulerAngles().clone();bike.frontNodes.push({n,b})}});
-  headLamp.setLocalPosition(0,.88,.77);setBikeColor(0)
+  headLamp.setLocalPosition(0,.91,.92);setBikeColor(0)
 }
 function setBikeColor(i){bike.color=i;const colors=[new pc.Color(.05,.45,.58),new pc.Color(.82,.12,.08),new pc.Color(.95,.57,.04),new pc.Color(.035,.035,.04),new pc.Color(.82,.82,.77)];if(!bike.visual)return;const tint=colors[i]||colors[0];let changed=0;for(const r of bike.visual.findComponents('render'))for(const mi of r.meshInstances){const old=mi.material;if(!old||!old.clone)continue;const name=((old.name||'')+' '+(mi.node?.name||'')).toLowerCase();if(/tire|tyre|rubber|glass|chrome|metal|wheel|rim|seat/.test(name))continue;if(changed<4){const m=old.clone();if(m.diffuse){m.diffuse=tint.clone();m.update();mi.material=m;changed++}}}toast(['Turquesa','Rojo','Amarillo','Negro','Blanco'][i]+' aplicado')}
 function physics(dt){
@@ -481,13 +481,13 @@ function physics(dt){
   const throttle=clamp((input.up-input.down)+input.throttleAnalog,-1,1);const steerIn=clamp((input.right-input.left)+input.steerAnalog,-1,1);bike.surface=surfaceAt(bike.pos.x,bike.pos.z);const surf=CONFIG.surfaces[bike.surface];
   const speedAbs=Math.abs(bike.speed),speedN=clamp(speedAbs/CONFIG.maxSpeed,0,1);
   // 125 cc de calle: empuje fuerte abajo, caída progresiva cerca de velocidad máxima.
-  let accel=(throttle>=0?CONFIG.acceleration:CONFIG.acceleration*.48)*throttle*(1-.54*speedN);
+  let accel=(throttle>=0?CONFIG.acceleration:CONFIG.acceleration*.48)*throttle*(1-.54*speedN)*(0.66+surf.grip*.34);
   if(input.turbo&&throttle>.15&&bike.speed>1)accel*=CONFIG.turboMultiplier;
   if((bike.speed>CONFIG.maxSpeed&&accel>0)||(bike.speed<-CONFIG.reverseSpeed&&accel<0))accel=0;
   const resist=CONFIG.rollingDrag*surf.drag+CONFIG.aeroDrag*bike.speed*bike.speed*Math.sign(bike.speed||1);
   if(Math.abs(throttle)<.03)bike.speed-=Math.sign(bike.speed)*Math.min(Math.abs(bike.speed),CONFIG.engineBrake*dt);
   bike.speed+=accel*dt;bike.speed-=resist*dt;
-  if(input.brake){const dec=CONFIG.brakeForce*(.62+.38*surf.grip)*dt;bike.speed-=Math.sign(bike.speed)*Math.min(Math.abs(bike.speed),dec)}
+  if(input.brake){const dec=CONFIG.brakeForce*(.52+.48*surf.grip)*dt;bike.speed-=Math.sign(bike.speed)*Math.min(Math.abs(bike.speed),dec)}bike.brakeDive=damp(bike.brakeDive,input.brake&&speedAbs>1?-0.065*speedN:0,9.5,dt);
   bike.speed=clamp(bike.speed,-CONFIG.reverseSpeed,CONFIG.maxSpeed*(input.turbo?1.035:1));
   // Modelo bicicleta: el radio de giro sale del ángulo del manubrio y la distancia entre ejes.
   const maxSteer=rad(30)*(1-speedN)+rad(8)*speedN;bike.steer=damp(bike.steer,steerIn*maxSteer,CONFIG.steerResponse,dt);
@@ -502,7 +502,7 @@ function physics(dt){
   const dx=(fx*bike.speed+sideX*sideSlip)*dt,dz=(fz*bike.speed+sideZ*sideSlip)*dt;bike.pos.x+=dx;bike.pos.z+=dz;bike.distance+=Math.hypot(dx,dz);
   // Suspensión, topes, baches y rampa
   let kick=0,dip=0;for(const b of bumps){const d=Math.hypot(bike.pos.x-b.x,bike.pos.z-b.z);if(d<b.r&&speedAbs>3)kick=Math.max(kick,b.k*(1-d/b.r)*speedAbs)}for(const p of potholes){const d=Math.hypot(bike.pos.x-p.x,bike.pos.z-p.z);if(d<p.r&&speedAbs>2){dip=Math.min(dip,-p.k*(1-d/p.r)*Math.min(speedAbs,14));cameraShake=Math.max(cameraShake,.035*speedN)}}for(const r of ramps){const d=Math.hypot(bike.pos.x-r.x,bike.pos.z-r.z);if(d<r.r&&speedAbs>5&&bike.onGround){bike.vy=Math.max(bike.vy,r.k+speedAbs*.08);bike.onGround=false}}
-  const roadNoise=Math.sin(performance.now()*.015+bike.pos.x*2.1)*surf.bump*speedN;bike.susp=damp(bike.susp,clamp(roadNoise+kick*.03+dip*.025,-CONFIG.suspensionTravel,CONFIG.suspensionTravel),CONFIG.suspensionSpring,dt);
+  const phase=bike.pos.z*11.3+bike.pos.x*5.7;const roadNoise=(Math.sin(phase)*.62+Math.sin(phase*2.17+1.4)*.26+Math.sin(phase*.43-.8)*.12)*surf.bump*speedN;bike.susp=damp(bike.susp,clamp(roadNoise+kick*.03+dip*.025,-CONFIG.suspensionTravel,CONFIG.suspensionTravel),CONFIG.suspensionSpring,dt);
   if(!bike.onGround){bike.vy-=CONFIG.gravity*dt;bike.y+=bike.vy*dt;bike.airtime+=dt;if(bike.y<=.18){if(bike.vy<-6.2)fallBike('Aterrizaje duro');bike.y=.18;bike.vy=0;bike.onGround=true}}else bike.y=.18+bike.susp;
   collideBike();
   if(Math.abs(bike.lean)>CONFIG.fallLean&&speedAbs<2.2)fallBike('Perdiste el equilibrio');if(bike.pitch>CONFIG.fallWheelie)fallBike('Wheelie pasado');
@@ -510,12 +510,12 @@ function physics(dt){
   if(speedAbs<1.5&&bike.onGround)bike.lastSafe.copy(bike.pos);
   applyBikeTransform();animateWheels();audio.update(dt,throttle,bike.rpm,bike.slip,surf.grip);updateMissions(dt);
 }
-function collideBike(){const r=.62;for(const c of colliders){const dx=bike.pos.x-c.x,dz=bike.pos.z-c.z;if(Math.abs(dx)<c.hx+r&&Math.abs(dz)<c.hz+r){const px=c.hx+r-Math.abs(dx),pz=c.hz+r-Math.abs(dz);if(px<pz)bike.pos.x+=Math.sign(dx||1)*px;else bike.pos.z+=Math.sign(dz||1)*pz;if(Math.abs(bike.speed)>4.5)audio.impact(Math.abs(bike.speed)/CONFIG.maxSpeed);bike.speed*=-.16;cameraShake=Math.max(cameraShake,.16)}}
+function collideBike(){const r=.62;for(const c of colliders){const dx=bike.pos.x-c.x,dz=bike.pos.z-c.z;if(Math.abs(dx)<c.hx+r&&Math.abs(dz)<c.hz+r){const impactSpeed=Math.abs(bike.speed),px=c.hx+r-Math.abs(dx),pz=c.hz+r-Math.abs(dz);if(px<pz)bike.pos.x+=Math.sign(dx||1)*px;else bike.pos.z+=Math.sign(dz||1)*pz;if(impactSpeed>4.5)audio.impact(impactSpeed/CONFIG.maxSpeed);bike.speed*=-.12;cameraShake=Math.max(cameraShake,.16+impactSpeed*.008);if(impactSpeed>10.5)fallBike('Golpe fuerte')}}
   bike.pos.x=clamp(bike.pos.x,-CONFIG.worldHalf,CONFIG.worldHalf);bike.pos.z=clamp(bike.pos.z,-CONFIG.worldHalf,CONFIG.worldHalf)
 }
 function fallBike(reason){if(bike.fallen)return;bike.fallen=true;bike.fallTimer=1.75;$('#damage').classList.add('fallen');toast(reason);audio.impact(.8)}
-function resetBike(){bike.fallen=false;$('#damage').classList.remove('fallen');bike.pos.copy(bike.lastSafe);bike.y=.18;bike.vy=0;bike.speed=0;bike.pitch=0;bike.lean=0;bike.slip=0;applyBikeTransform()}
-function applyBikeTransform(){bike.root.setPosition(bike.pos.x,bike.y,bike.pos.z);bike.root.setEulerAngles(deg(bike.pitch),deg(bike.yaw),deg(bike.lean));if(bike.rider){bike.rider.setLocalEulerAngles(-2-deg(bike.pitch)*.04,deg(bike.steer)*.06,0);bike.rider.setLocalPosition(0,.01-bike.susp*.04,-.19)}}
+function resetBike(){bike.fallen=false;$('#damage').classList.remove('fallen');bike.pos.copy(bike.lastSafe);bike.y=.18;bike.vy=0;bike.speed=0;bike.pitch=0;bike.lean=0;bike.slip=0;bike.brakeDive=0;applyBikeTransform()}
+function applyBikeTransform(){bike.root.setPosition(bike.pos.x,bike.y,bike.pos.z);bike.root.setEulerAngles(deg(bike.pitch+bike.brakeDive),deg(bike.yaw),deg(bike.lean));if(bike.rider){bike.rider.setLocalEulerAngles(-3-deg(bike.pitch)*.04-deg(bike.brakeDive)*.22,deg(bike.steer)*.06,0);bike.rider.setLocalPosition(0,.04-bike.susp*.04,-.16)}}
 function animateWheels(){for(const w of bike.wheels)w.n.setLocalEulerAngles(w.b.x+bike.wheelAngle,w.b.y,w.b.z);for(const f of bike.frontNodes)f.n.setLocalEulerAngles(f.b.x,f.b.y+deg(bike.steer)*.55,f.b.z)}
 
 /* =========================================================
@@ -623,7 +623,7 @@ async function runSelfTest(){
   try{
     ok('motor',typeof pc!=='undefined'&&!!app);ok('cielo',environmentReady||!!camera.camera.clearColor);ok('adoquín PBR',paverReady&&!!paverMaterial);ok('assets esenciales',REQUIRED.every(n=>cache.has(n)));ok('moto creada',!!bike.visual);ok('escala protagonista',bike.visual&&bike.visual.getLocalScale().x>1.05);ok('ruedas moto',bike.wheels.length>=2);ok('piloto cargado',!!bike.rider);ok('piloto ligero',!!bike.rider&&bike.rider.findComponents('render').length>0);ok('mundo',world.children.length>40);ok('taller detallado',!cache.has('garageBench')||world.findByName('garageBench')!==null);ok('NPCs',movers.length>=6);ok('misiones',missions.length===4);
     const x0=bike.pos.x,z0=bike.pos.z;input.up=1;for(let i=0;i<150;i++)physics(1/60);ok('aceleración',bike.speed>5&&Math.hypot(bike.pos.x-x0,bike.pos.z-z0)>3);
-    const s1=bike.speed;input.up=0;input.brake=1;for(let i=0;i<45;i++)physics(1/60);input.brake=0;ok('frenado',Math.abs(bike.speed)<Math.abs(s1));
+    const s1=bike.speed;input.up=0;input.brake=1;for(let i=0;i<45;i++)physics(1/60);input.brake=0;ok('frenado',Math.abs(bike.speed)<Math.abs(s1));ok('transferencia de peso',bike.brakeDive<-.002);
     input.up=1;input.right=1;for(let i=0;i<70;i++)physics(1/60);input.right=0;ok('inclinación',Math.abs(bike.lean)>.05);bike.speed=Math.max(bike.speed,7.2);bike.pitch=0;bike.wheelieTime=0;input.up=1;input.wheelie=1;for(let i=0;i<36;i++)physics(1/60);input.wheelie=0;ok('wheelie',bike.pitch>.10&&bike.wheelieTime>.10);input.up=0;
     // Superficies: la tierra debe producir más slip que el asfalto bajo la misma maniobra.
     input.up=1;input.right=1;bike.pos.set(0,.18,-36);bike.yaw=0;bike.speed=9;bike.steer=0;bike.slip=0;for(let i=0;i<20;i++)physics(1/60);const slipAsphalt=bike.slip;
@@ -631,7 +631,7 @@ async function runSelfTest(){
     // Tope y rampa deben activar suspensión/salto.
     input.right=0;bike.pos.set(0,.18,-8.1);bike.yaw=0;bike.speed=7;bike.susp=0;for(let i=0;i<20;i++)physics(1/60);ok('suspensión tope',Math.abs(bike.susp)>.004||cameraShake>0);
     bike.pos.set(16,.18,-29.2);bike.yaw=0;bike.speed=8;bike.onGround=true;bike.vy=0;bike.airtime=0;let airborne=false;for(let i=0;i<35;i++){physics(1/60);airborne=airborne||!bike.onGround}ok('rampa/salto',airborne||bike.airtime>0);
-    const cam0=bike.cameraMode;cycleCamera();ok('cámaras',bike.cameraMode!==cam0);ok('touch API',typeof input.steerAnalog==='number');ok('sin errores JS',errors.length===0);
+    bike.pos.set(0,.18,0);bike.speed=0;bike.susp=.04;input.up=input.right=0;for(let i=0;i<40;i++)physics(1/60);ok('suspensión estable parado',Math.abs(bike.susp)<.012);const cam0=bike.cameraMode;cycleCamera();ok('cámaras',bike.cameraMode!==cam0);ok('touch API',typeof input.steerAnalog==='number');ok('sin errores JS',errors.length===0);
   }catch(e){errors.push(String(e.stack||e));results.push({name:'excepción',ok:false})}
   input.up=input.down=input.left=input.right=input.brake=input.turbo=input.wheelie=0;bike.pos.set(0,.18,-12);bike.speed=0;bike.steer=0;bike.lean=0;bike.pitch=0;bike.vy=0;bike.y=.18;bike.fallen=false;bike.wheelieTime=0;applyBikeTransform();paused=true;updateCamera(.65);updateHUD();const pass=results.every(r=>r.ok)&&errors.length===0;const pre=document.createElement('pre');pre.id='selftest-result';pre.textContent='SELFTEST:'+(pass?'PASS':'FAIL')+'\n'+results.map(r=>(r.ok?'PASS ':'FAIL ')+r.name).join('\n')+(errors.length?'\nERRORS\n'+errors.join('\n'):'');document.body.appendChild(pre);console.log(pre.textContent);document.title=pass?'SELFTEST PASS':'SELFTEST FAIL';
 }
