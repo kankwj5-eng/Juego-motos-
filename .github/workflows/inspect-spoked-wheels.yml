@@ -1,0 +1,32 @@
+name: Inspect Spoked Wheel Donor
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/inspect-spoked-wheels.yml]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download donor
+        run: curl -L --fail -o /tmp/donor.glb https://cdn.3dassets.dev/assets/36564/v1/model.glb
+      - name: Inspect GLB
+        run: |
+          python3 - <<'PY'
+          import struct,json
+          b=open('/tmp/donor.glb','rb').read();_,_,total=struct.unpack_from('<III',b,0);off=12;j=None
+          while off<total:
+              ln,typ=struct.unpack_from('<II',b,off);off+=8;chunk=b[off:off+ln];off+=ln
+              if typ==0x4E4F534A:j=json.loads(chunk.decode('utf-8').rstrip('\x00 \t\r\n'));break
+          print('BYTES',len(b))
+          print('MATERIALS')
+          for i,m in enumerate(j.get('materials',[])):
+              p=m.get('pbrMetallicRoughness',{});print(i,m.get('name'),'base',p.get('baseColorFactor'),'metal',p.get('metallicFactor'),'rough',p.get('roughnessFactor'))
+          print('NODES')
+          for i,n in enumerate(j.get('nodes',[])):
+              if n.get('mesh') is not None or n.get('name'):
+                  print(i,n.get('name'),'mesh',n.get('mesh'),'T',n.get('translation'),'R',n.get('rotation'),'S',n.get('scale'),'children',n.get('children'))
+          print('MESHES')
+          for i,m in enumerate(j.get('meshes',[])): print(i,m.get('name'),'mats',[p.get('material') for p in m.get('primitives',[])])
+          print('ANIMS',[(a.get('name'),len(a.get('channels',[]))) for a in j.get('animations',[])])
+          PY
