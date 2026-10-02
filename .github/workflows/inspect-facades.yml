@@ -1,0 +1,34 @@
+name: Inspect Facades
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/inspect-facades.yml]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download facade assets
+        run: |
+          curl -L --fail -o /tmp/facade.glb https://cdn.3dassets.dev/assets/28189/v1/model.glb
+          curl -L --fail -o /tmp/house.glb https://cdn.3dassets.dev/assets/190/v1/model.glb
+          curl -L --fail -o /tmp/shop.glb https://cdn.3dassets.dev/assets/36527/v1/model.glb
+      - name: Inspect
+        run: |
+          python3 - <<'PY'
+          import struct,json,os
+          def inspect(path):
+              b=open(path,'rb').read();_,_,total=struct.unpack_from('<III',b,0);off=12;j=None
+              while off<total:
+                  ln,typ=struct.unpack_from('<II',b,off);off+=8;chunk=b[off:off+ln];off+=ln
+                  if typ==0x4E4F534A:j=json.loads(chunk.decode('utf-8').rstrip('\x00 \t\r\n'));break
+              print('\n===',os.path.basename(path),len(b),'bytes ===')
+              for i,m in enumerate(j.get('materials',[])):
+                  p=m.get('pbrMetallicRoughness',{})
+                  print('MAT',i,m.get('name'),'base',p.get('baseColorFactor'),'metal',p.get('metallicFactor'),'rough',p.get('roughnessFactor'))
+              for i,n in enumerate(j.get('nodes',[])):
+                  if n.get('mesh') is not None:print('NODE',i,n.get('name'),'mesh',n.get('mesh'))
+              for i,m in enumerate(j.get('meshes',[])):
+                  print('MESH',i,m.get('name'),'mats',[p.get('material') for p in m.get('primitives',[])])
+          for p in ['/tmp/facade.glb','/tmp/house.glb','/tmp/shop.glb']:inspect(p)
+          PY
