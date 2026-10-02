@@ -33,6 +33,8 @@ jobs:
           test -s visual.png
           "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --window-size=390,844 --virtual-time-budget=50000 --screenshot=mobile.png 'http://127.0.0.1:8000/?preview=1' >/tmp/mobile.out 2>>/tmp/chrome.err || true
           test -s mobile.png
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --enable-unsafe-swiftshader --window-size=1440,900 --virtual-time-budget=50000 --screenshot=night.png 'http://127.0.0.1:8000/?night=1' >/tmp/night.out 2>>/tmp/chrome.err || true
+          test -s night.png
           grep -Ei 'Uncaught|TypeError|ReferenceError|SyntaxError|ERR_FAILED|404|CORS' /tmp/chrome.err | tail -n 100 || true
       - uses: actions/upload-artifact@v4
         if: always()
@@ -41,5 +43,6 @@ jobs:
           path: |
             visual.png
             mobile.png
+            night.png
             /tmp/dom.txt
             /tmp/chrome.err
