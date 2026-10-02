@@ -311,6 +311,17 @@ function weatherEntity(e,amount=.55){
     m.update();mi.material=m
   }return e
 }
+function paverRoadStyle(e,tu=3.05,tv=2.25){
+  if(!e)return e;e.name='AdoquinPBR';
+  walk(e,n=>{const nm=(n.name||'').toLowerCase();if(nm.includes('plaster')||nm.includes('stone'))n.enabled=false});
+  if(!paverMaterial)return asphaltize(e);
+  for(const r of e.findComponents('render'))for(const mi of r.meshInstances){
+    const m=paverMaterial.clone();
+    m.diffuseMapTiling=new pc.Vec2(tu,tv);m.normalMapTiling=new pc.Vec2(tu,tv);m.glossMapTiling=new pc.Vec2(tu,tv);
+    m.update();mi.material=m
+  }
+  return e
+}
 function neutralizeLampModel(e){
   if(!e)return e;
   for(const r of e.findComponents('render'))for(const mi of r.meshInstances){
