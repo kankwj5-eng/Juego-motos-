@@ -158,9 +158,9 @@ const REQUIRED = ['road','roadPaverBase','pavement','drain','cobble','dirt','yar
 const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet','graffiti','cornerBuilding','waterTank','publicTap','streetBin','stoolBlue','stoolStack','pottedPlants','awningCrimson','shadeTree','garageBench','garageTyres','tyreChanger','partsShelf','exhaustSilencer'];
 const SKY_URL='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/qwantani_sunset_puresky_1k.hdr';
 const PAVER_URL={
-  diff:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/interlocking_concrete_pavers/interlocking_concrete_pavers_diff_1k.jpg',
-  normal:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/interlocking_concrete_pavers/interlocking_concrete_pavers_nor_gl_1k.jpg',
-  rough:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/interlocking_concrete_pavers/interlocking_concrete_pavers_rough_1k.jpg'
+  diff:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_diff_1k.jpg',
+  normal:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_nor_gl_1k.jpg',
+  rough:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_rough_1k.jpg'
 };
 
 
@@ -239,9 +239,9 @@ function loadTextureUrl(url,name){
 }
 async function loadPaverMaterial(){
   const [diff,norm,rough]=await Promise.all([
-    loadTextureUrl(PAVER_URL.diff,'interlocking_pavers_diff_1k.jpg'),
-    loadTextureUrl(PAVER_URL.normal,'interlocking_pavers_nor_gl_1k.jpg'),
-    loadTextureUrl(PAVER_URL.rough,'interlocking_pavers_rough_1k.jpg')
+    loadTextureUrl(PAVER_URL.diff,'concrete_pavers_diff_1k.jpg'),
+    loadTextureUrl(PAVER_URL.normal,'concrete_pavers_nor_gl_1k.jpg'),
+    loadTextureUrl(PAVER_URL.rough,'concrete_pavers_rough_1k.jpg')
   ]);
   if(!diff||!norm||!rough){paverReady=false;return false}
   const m=new pc.StandardMaterial();m.name='AdoquinNicaraguaPBR';m.diffuseMap=diff;m.normalMap=norm;m.glossMap=rough;m.glossInvert=true;
