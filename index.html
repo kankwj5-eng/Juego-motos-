@@ -148,10 +148,11 @@ const ASSET = {
   garageBench:'https://cdn.3dassets.dev/assets/34026/v1/model.glb',
   garageTyres:'https://cdn.3dassets.dev/assets/34019/v1/model.glb',
   tyreChanger:'https://cdn.3dassets.dev/assets/34020/v1/model.glb',
-  partsShelf:'https://cdn.3dassets.dev/assets/34027/v1/model.glb'
+  partsShelf:'https://cdn.3dassets.dev/assets/34027/v1/model.glb',
+  exhaustSilencer:'https://cdn.3dassets.dev/assets/26642/v1/model.glb'
 };
 const REQUIRED = ['road','pavement','drain','cobble','dirt','yardGrit','bike','commuterBike','rider','puddle','speedBump','pothole','ramp','facadeConcrete','facadeDoor','facadeShutter','facadeWindow','facadeShop','workshopShed','compactHouse','shopOpen','stall','utility','cable','banana','chicken','dog','person','bus','rickshaw','bicycle','hoop','rocking','lamp'];
-const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet','graffiti','cornerBuilding','waterTank','publicTap','streetBin','stoolBlue','stoolStack','pottedPlants','awningCrimson','shadeTree','garageBench','garageTyres','tyreChanger','partsShelf'];
+const OPTIONAL = ['grass','trafficBike','gate','door','volcano','church','palm','clothesline','handcart','satellite','toolTrolley','fuelCan','helmet','graffiti','cornerBuilding','waterTank','publicTap','streetBin','stoolBlue','stoolStack','pottedPlants','awningCrimson','shadeTree','garageBench','garageTyres','tyreChanger','partsShelf','exhaustSilencer'];
 const SKY_URL='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/qwantani_sunset_puresky_1k.hdr';
 const PAVER_URL={
   diffuse:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_diff_1k.jpg',
@@ -454,7 +455,7 @@ function surfaceAt(x,z){for(let i=surfaceZones.length-1;i>=0;i--){const q=surfac
 /* =========================================================
    MOTO + FÍSICA
    ========================================================= */
-const bike={root:new pc.Entity('MotoPlayer'),visual:null,rider:null,wheels:[],frontNodes:[],pos:new pc.Vec3(0,.18,-12),yaw:0,speed:0,steer:0,lean:0,pitch:0,vy:0,y:.18,onGround:true,fallen:false,fallTimer:0,rpm:1200,susp:0,wheelAngle:0,slip:0,surface:'asphalt',cameraMode:0,headlight:true,color:0,exhaust:0,airtime:0,wheelieTime:0,brakeDive:0,gear:1,shiftTimer:0,lastSafe:new pc.Vec3(0,.18,-12),distance:0};actors.addChild(bike.root);
+const bike={root:new pc.Entity('MotoPlayer'),visual:null,rider:null,helmet:null,exhaustAccessory:null,headMat:null,tailMat:null,wheels:[],frontNodes:[],pos:new pc.Vec3(0,.18,-12),yaw:0,speed:0,steer:0,lean:0,pitch:0,vy:0,y:.18,onGround:true,fallen:false,fallTimer:0,rpm:1200,susp:0,wheelAngle:0,slip:0,surface:'asphalt',cameraMode:0,headlight:true,color:0,exhaust:0,airtime:0,wheelieTime:0,brakeDive:0,gear:1,shiftTimer:0,lastSafe:new pc.Vec3(0,.18,-12),distance:0};actors.addChild(bike.root);
 const headLamp=new pc.Entity('FaroMoto');headLamp.addComponent('light',{type:'spot',color:new pc.Color(1,.91,.73),intensity:1.9,range:24,innerConeAngle:19,outerConeAngle:33,castShadows:false});headLamp.setLocalPosition(0,1.0,.45);headLamp.setLocalEulerAngles(-82,0,0);bike.root.addChild(headLamp);
 
 function styleRider(e){
@@ -477,9 +478,27 @@ function setupBike(){
   if(cache.has('helmet'))bike.helmet=instance('helmet',bike.root,{p:[0,1.04,-.08],r:[-10,180,0],s:[.61,.61,.61],name:'CascoPiloto'});
   bike.wheels.length=0;bike.frontNodes.length=0;
   walk(bike.visual,n=>{const nm=(n.name||'').toLowerCase();if(/side.?stand|kick.?stand/.test(nm))n.enabled=false;if(nm.includes('wheel')){const b=n.getLocalEulerAngles().clone();bike.wheels.push({n,b})}if(nm.includes('front')||nm.includes('handle')||nm.includes('steer')){const b=n.getLocalEulerAngles().clone();bike.frontNodes.push({n,b})}});
-  headLamp.setLocalPosition(0,.91,.92);setBikeColor(0)
+  headLamp.setLocalPosition(0,.91,.92);
+  const headNode=bike.visual.findByName?.('naked-streetfighter_14'),tailNode=bike.visual.findByName?.('naked-streetfighter_15');
+  if(headNode){const r=headNode.findComponent?.('render')||headNode.render;if(r?.meshInstances?.[0]){bike.headMat=r.meshInstances[0].material.clone();r.meshInstances[0].material=bike.headMat}}
+  if(tailNode){const r=tailNode.findComponent?.('render')||tailNode.render;if(r?.meshInstances?.[0]){bike.tailMat=r.meshInstances[0].material.clone();r.meshInstances[0].material=bike.tailMat}}
+  if(cache.has('exhaustSilencer')){bike.exhaustAccessory=instance('exhaustSilencer',bike.root,{p:[-.29,.43,-.55],r:[90,0,0],s:[.30,.30,.30],name:'EscapeAccesorio'});bike.exhaustAccessory.enabled=false}
+  setBikeColor(0);updateExhaustVisual();updateBikeLampMaterials()
 }
 function setBikeColor(i){bike.color=i;const colors=[new pc.Color(.05,.45,.58),new pc.Color(.82,.12,.08),new pc.Color(.95,.57,.04),new pc.Color(.035,.035,.04),new pc.Color(.82,.82,.77)];if(!bike.visual)return;const tint=colors[i]||colors[0];let changed=0;for(const r of bike.visual.findComponents('render'))for(const mi of r.meshInstances){const old=mi.material;if(!old||!old.clone)continue;const name=((old.name||'')+' '+(mi.node?.name||'')).toLowerCase();if(/tire|tyre|rubber|glass|chrome|metal|wheel|rim|seat/.test(name))continue;if(changed<4){const m=old.clone();if(m.diffuse){m.diffuse=tint.clone();m.update();mi.material=m;changed++}}}toast(['Turquesa','Rojo','Amarillo','Negro','Blanco'][i]+' aplicado')}
+function updateExhaustVisual(){
+  if(!bike.exhaustAccessory)return;
+  if(bike.exhaust===0){bike.exhaustAccessory.enabled=false;return}
+  bike.exhaustAccessory.enabled=true;
+  if(bike.exhaust===1){bike.exhaustAccessory.setLocalPosition(-.29,.43,-.56);bike.exhaustAccessory.setLocalEulerAngles(90,0,0);bike.exhaustAccessory.setLocalScale(.27,.27,.27)}
+  else{bike.exhaustAccessory.setLocalPosition(-.31,.39,-.61);bike.exhaustAccessory.setLocalEulerAngles(101,0,-4);bike.exhaustAccessory.setLocalScale(.39,.39,.39)}
+}
+function updateBikeLampMaterials(){
+  const night=clamp(1-(Math.sin(dayT*Math.PI*2)*.72+.45),0,1),headOn=bike.headlight?(0.10+night*.90):0;
+  if(bike.headMat){bike.headMat.emissive=new pc.Color(.95*headOn,.90*headOn,.76*headOn);if('emissiveIntensity' in bike.headMat)bike.headMat.emissiveIntensity=1.25;bike.headMat.update()}
+  const brake=input.brake?1:.16;
+  if(bike.tailMat){bike.tailMat.emissive=new pc.Color(.95*brake,.035*brake,.012*brake);if('emissiveIntensity' in bike.tailMat)bike.tailMat.emissiveIntensity=input.brake?2.1:.45;bike.tailMat.update()}
+}
 function physics(dt){
   if(paused||!started)return;
   dt=Math.min(dt,.033);
@@ -518,7 +537,7 @@ function physics(dt){
   const rpmPerMs=[0,760,510,380,300],rpmTarget=clamp((1400+speedAbs*rpmPerMs[bike.gear]+Math.abs(throttle)*620)*(bike.shiftTimer>0?.80:1),1250,9000);
   bike.rpm=damp(bike.rpm,rpmTarget,10.5,dt);bike.wheelAngle=(bike.wheelAngle+deg((bike.speed/CONFIG.wheelRadius)*dt))%360;
   if(speedAbs<1.5&&bike.onGround)bike.lastSafe.copy(bike.pos);
-  applyBikeTransform();animateWheels();audio.update(dt,throttle,bike.rpm,bike.slip,surf.grip);updateMissions(dt);
+  applyBikeTransform();animateWheels();updateBikeLampMaterials();audio.update(dt,throttle,bike.rpm,bike.slip,surf.grip);updateMissions(dt);
 }
 function collideBike(){const r=.62;for(const c of colliders){const dx=bike.pos.x-c.x,dz=bike.pos.z-c.z;if(Math.abs(dx)<c.hx+r&&Math.abs(dz)<c.hz+r){const impactSpeed=Math.abs(bike.speed),px=c.hx+r-Math.abs(dx),pz=c.hz+r-Math.abs(dz);if(px<pz)bike.pos.x+=Math.sign(dx||1)*px;else bike.pos.z+=Math.sign(dz||1)*pz;if(impactSpeed>4.5)audio.impact(impactSpeed/CONFIG.maxSpeed);bike.speed*=-.12;cameraShake=Math.max(cameraShake,.16+impactSpeed*.008);if(impactSpeed>10.5)fallBike('Golpe fuerte')}}
   bike.pos.x=clamp(bike.pos.x,-CONFIG.worldHalf,CONFIG.worldHalf);bike.pos.z=clamp(bike.pos.z,-CONFIG.worldHalf,CONFIG.worldHalf)
@@ -635,7 +654,7 @@ function updateDay(dt){
   r+=(dusk[0]-r)*sunset*.62;g+=(dusk[1]-g)*sunset*.62;b+=(dusk[2]-b)*sunset*.62;camera.camera.clearColor.set(r,g,b);try{app.scene.fogColor.set(r*.88,g*.90,b*.94)}catch{}
   for(const l of lamps)l.light.intensity=night>.38?1.22*clamp((night-.38)/.45,0,1):0;
   for(const h of houseLights)h.e.light.intensity=night>.26?h.intensity*clamp((night-.26)/.42,0,1):0;
-  headLamp.light.intensity=bike.headlight?(night>.16?1.25+night*.9:0):0;audio.crickets(night)
+  headLamp.light.intensity=bike.headlight?(night>.16?1.25+night*.9:0):0;updateBikeLampMaterials();audio.crickets(night)
 }
 function updateHUD(){const kmh=Math.abs(bike.speed)*3.6;$('#speed').innerHTML=`${Math.round(kmh)} <small>KM/H</small>`;$('#rpm').textContent=Math.round(bike.rpm/100)*100;$('#gear').textContent=bike.speed<-.2?'R':bike.gear;$('#grip').textContent=Math.round(CONFIG.surfaces[bike.surface].grip*100)+'%';$('#surface').textContent=CONFIG.surfaces[bike.surface].label;drawMap();updateLabels()}
 function drawMap(){const c=$('#map'),ctx=c.getContext('2d'),W=c.width,H=c.height,s=W/(CONFIG.worldHalf*2);ctx.clearRect(0,0,W,H);ctx.fillStyle='#171816';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#555a5a';ctx.lineWidth=8*s;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();ctx.strokeStyle='#7f766a';ctx.lineWidth=4*s;for(const z of [-18,20]){ctx.beginPath();ctx.moveTo(0,H/2-z*s);ctx.lineTo(W,H/2-z*s);ctx.stroke()}ctx.strokeStyle='#8a6f4e';ctx.lineWidth=3*s;ctx.beginPath();ctx.moveTo(W/2+16*s,0);ctx.lineTo(W/2+16*s,H);ctx.stroke();const m=currentMission();if(m.kind!=='stunt'&&m.steps[mission.step]){const [x,z]=m.steps[mission.step];ctx.fillStyle='#ffb04a';ctx.beginPath();ctx.arc(W/2+x*s,H/2-z*s,7,0,Math.PI*2);ctx.fill()}for(const mo of movers){const p=mo.e.getPosition();ctx.fillStyle=mo.e.name==='bus'?'#71a8ff':mo.e.name==='rickshaw'?'#60d2b0':'#c9c9c9';ctx.fillRect(W/2+p.x*s-2,H/2-p.z*s-2,4,4)}ctx.save();ctx.translate(W/2+bike.pos.x*s,H/2-bike.pos.z*s);ctx.rotate(bike.yaw);ctx.fillStyle='#ff7f26';ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(5,6);ctx.lineTo(-5,6);ctx.closePath();ctx.fill();ctx.restore()}
@@ -644,7 +663,7 @@ function toggleHeadlight(){bike.headlight=!bike.headlight;toast('Luces '+(bike.h
 function togglePause(force){if(!started)return;paused=typeof force==='boolean'?force:!paused;$('#pause').style.display=paused?'grid':'none';if(paused)audio.engineGain&&audio.engineGain.gain.setTargetAtTime(.001,audio.ctx.currentTime,.05)}
 function toggleGarage(){if(!started)return;const near=Math.hypot(bike.pos.x-8,bike.pos.z-6)<8;if(!near){toast('Acércate al taller');return}$('#garage').style.display=$('#garage').style.display==='block'?'none':'block'}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('showToast');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('showToast'),1700)}
-$('.swatch')?.addEventListener?.('click',()=>{});document.querySelectorAll('.swatch').forEach((b,i)=>b.addEventListener('click',()=>setBikeColor(i)));$('#exhaust').addEventListener('change',e=>{bike.exhaust=Number(e.target.value);toast(['Escape calle','Escape corto','Escape libre'][bike.exhaust])});
+$('.swatch')?.addEventListener?.('click',()=>{});document.querySelectorAll('.swatch').forEach((b,i)=>b.addEventListener('click',()=>setBikeColor(i)));$('#exhaust').addEventListener('change',e=>{bike.exhaust=Number(e.target.value);updateExhaustVisual();toast(['Escape calle','Escape corto','Escape libre'][bike.exhaust])});
 
 /* =========================================================
    OBJETOS EMPUJABLES
@@ -678,7 +697,7 @@ $('#startBtn').addEventListener('click',()=>startGame(false));$('#resumeBtn').ad
 async function runSelfTest(){
   const results=[];const ok=(name,cond)=>results.push({name,ok:!!cond});
   try{
-    ok('motor',typeof pc!=='undefined'&&!!app);ok('cielo',environmentReady||!!camera.camera.clearColor);ok('material adoquín',world.findByName('cobble')!==null);ok('assets esenciales',REQUIRED.every(n=>cache.has(n)));ok('moto creada',!!bike.visual);ok('escala protagonista',bike.visual&&bike.visual.getLocalScale().x>1.05);ok('ruedas moto',bike.wheels.length>=2);ok('piloto cargado',!!bike.rider);ok('piloto ligero',!!bike.rider&&bike.rider.findComponents('render').length>0);ok('mundo',world.children.length>40);ok('luces de barrio',houseLights.length>=6);const daySave=dayT;dayT=.74;updateDay(0);ok('noche funcional',houseLights.some(h=>h.e.light.intensity>0)&&lamps.some(l=>l.light.intensity>0));dayT=daySave;updateDay(0);ok('taller detallado',!cache.has('garageBench')||world.findByName('garageBench')!==null);ok('NPCs',movers.length>=6);ok('reacción tráfico',movers.every(m=>!!m.kind));ok('misiones',missions.length===4);
+    ok('motor',typeof pc!=='undefined'&&!!app);ok('cielo',environmentReady||!!camera.camera.clearColor);ok('material adoquín',world.findByName('cobble')!==null);ok('assets esenciales',REQUIRED.every(n=>cache.has(n)));ok('moto creada',!!bike.visual);ok('escala protagonista',bike.visual&&bike.visual.getLocalScale().x>1.05);ok('ruedas moto',bike.wheels.length>=2);ok('piloto cargado',!!bike.rider);ok('piloto ligero',!!bike.rider&&bike.rider.findComponents('render').length>0);const ex0=bike.exhaust;bike.exhaust=1;updateExhaustVisual();ok('escape visual',!bike.exhaustAccessory||bike.exhaustAccessory.enabled);bike.exhaust=ex0;updateExhaustVisual();ok('luces moto',!!bike.headMat&&!!bike.tailMat);ok('mundo',world.children.length>40);ok('luces de barrio',houseLights.length>=6);const daySave=dayT;dayT=.74;updateDay(0);ok('noche funcional',houseLights.some(h=>h.e.light.intensity>0)&&lamps.some(l=>l.light.intensity>0));dayT=daySave;updateDay(0);ok('taller detallado',!cache.has('garageBench')||world.findByName('garageBench')!==null);ok('NPCs',movers.length>=6);ok('reacción tráfico',movers.every(m=>!!m.kind));ok('misiones',missions.length===4);
     const x0=bike.pos.x,z0=bike.pos.z;input.up=1;for(let i=0;i<150;i++)physics(1/60);ok('aceleración',bike.speed>5&&Math.hypot(bike.pos.x-x0,bike.pos.z-z0)>3);ok('caja automática',bike.gear>=2);
     const s1=bike.speed;input.up=0;input.brake=1;for(let i=0;i<45;i++)physics(1/60);input.brake=0;ok('frenado',Math.abs(bike.speed)<Math.abs(s1));ok('transferencia de peso',bike.brakeDive<-.002);
     input.up=1;input.right=1;for(let i=0;i<70;i++)physics(1/60);input.right=0;ok('inclinación',Math.abs(bike.lean)>.05);bike.speed=Math.max(bike.speed,7.2);bike.pitch=0;bike.wheelieTime=0;input.up=1;input.wheelie=1;for(let i=0;i<36;i++)physics(1/60);input.wheelie=0;ok('wheelie',bike.pitch>.10&&bike.wheelieTime>.10);input.up=0;
